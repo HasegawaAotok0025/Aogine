@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ソリューション エクスプローラーでの並べ方。実際のフォルダと同じ形にしてある -->
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Game">
+      <UniqueIdentifier>{5a1c2e7b-0d44-4c3a-9e61-7b2f8d0c1a01}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Engine">
+      <UniqueIdentifier>{5a1c2e7b-0d44-4c3a-9e61-7b2f8d0c1a02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Core">
+      <UniqueIdentifier>{5a1c2e7b-0d44-4c3a-9e61-7b2f8d0c1a03}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Graphics">
+      <UniqueIdentifier>{5a1c2e7b-0d44-4c3a-9e61-7b2f8d0c1a04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Physics">
+      <UniqueIdentifier>{5a1c2e7b-0d44-4c3a-9e61-7b2f8d0c1a05}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Component">
+      <UniqueIdentifier>{5a1c2e7b-0d44-4c3a-9e61-7b2f8d0c1a06}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Components">
+      <UniqueIdentifier>{5a1c2e7b-0d44-4c3a-9e61-7b2f8d0c1a07}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\DebugView">
+      <UniqueIdentifier>{5a1c2e7b-0d44-4c3a-9e61-7b2f8d0c1a0a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Editor">
+      <UniqueIdentifier>{c3d5a8f1-6b2e-4e79-8a14-2f9d0b7c5e31}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="シェーダ">
+      <UniqueIdentifier>{5a1c2e7b-0d44-4c3a-9e61-7b2f8d0c1a08}</UniqueIdentifier>
+      <Extensions>hlsl;hlsli</Extensions>
+    </Filter>
+    <Filter Include="ドキュメント">
+      <UniqueIdentifier>{5a1c2e7b-0d44-4c3a-9e61-7b2f8d0c1a09}</UniqueIdentifier>
+      <Extensions>md</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Game\Game.cpp"><Filter>Game</Filter></ClCompile>
+    <ClCompile Include="main.cpp"><Filter>Engine</Filter></ClCompile>
+    <ClCompile Include="Engine\Core\AudioEngine.cpp"><Filter>Engine\Core</Filter></ClCompile>
+    <ClCompile Include="Engine\Core\InputEngine.cpp"><Filter>Engine\Core</Filter></ClCompile>
+    <ClCompile Include="Engine\Graphics\Camera.cpp"><Filter>Engine\Graphics</Filter></ClCompile>
+    <ClCompile Include="Engine\Physics\BoxCollider.cpp"><Filter>Engine\Physics</Filter></ClCompile>
+    <ClCompile Include="Engine\Physics\MeshCollider.cpp"><Filter>Engine\Physics</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="App.h"><Filter>Game</Filter></ClInclude>
+    <ClInclude Include="Engine\Engine.h"><Filter>Engine</Filter></ClInclude>
+    <ClInclude Include="Engine\Core\AudioEngine.h"><Filter>Engine\Core</Filter></ClInclude>
+    <ClInclude Include="Engine\Core\InputEngine.h"><Filter>Engine\Core</Filter></ClInclude>
+    <ClInclude Include="Engine\Core\MathUtility.h"><Filter>Engine\Core</Filter></ClInclude>
+    <ClInclude Include="Engine\Core\Quaternion.h"><Filter>Engine\Core</Filter></ClInclude>
+    <ClInclude Include="Engine\Core\SoundBank.h"><Filter>Engine\Core</Filter></ClInclude>
+    <ClInclude Include="Engine\Graphics\Camera.h"><Filter>Engine\Graphics</Filter></ClInclude>
+    <ClInclude Include="Engine\Graphics\Draw2D.h"><Filter>Engine\Graphics</Filter></ClInclude>
+    <ClInclude Include="Engine\Graphics\Particle.h"><Filter>Engine\Graphics</Filter></ClInclude>
+    <ClInclude Include="Engine\Graphics\GraphicsCommon.h"><Filter>Engine\Graphics</Filter></ClInclude>
+    <ClInclude Include="Engine\Graphics\Object3D.h"><Filter>Engine\Graphics</Filter></ClInclude>
+    <ClInclude Include="Engine\Graphics\RenderFeatures.h"><Filter>Engine\Graphics</Filter></ClInclude>
+    <ClInclude Include="Engine\Graphics\Renderer.h"><Filter>Engine\Graphics</Filter></ClInclude>
+    <ClInclude Include="Engine\Graphics\TextRenderer.h"><Filter>Engine\Graphics</Filter></ClInclude>
+    <ClInclude Include="Engine\Physics\BoxCollider.h"><Filter>Engine\Physics</Filter></ClInclude>
+    <ClInclude Include="Engine\Physics\MeshCollider.h"><Filter>Engine\Physics</Filter></ClInclude>
+    <ClInclude Include="Engine\Physics\PhysicsWorld.h"><Filter>Engine\Physics</Filter></ClInclude>
+    <ClInclude Include="Engine\Component\Component.h"><Filter>Engine\Component</Filter></ClInclude>
+    <ClInclude Include="Engine\Components\BuiltinComponents.h"><Filter>Engine\Components</Filter></ClInclude>
+    <ClInclude Include="Engine\Components\MotionComponents.h"><Filter>Engine\Components</Filter></ClInclude>
+    <ClInclude Include="Engine\Components\ReactionComponents.h"><Filter>Engine\Components</Filter></ClInclude>
+    <ClInclude Include="Engine\DebugView\GizmoMath.h"><Filter>Engine\DebugView</Filter></ClInclude>
+    <ClInclude Include="Engine\Editor\ObjectInspector.h"><Filter>Engine\Editor</Filter></ClInclude>
+    <ClInclude Include="Engine\Editor\ObjectEdits.h"><Filter>Engine\Editor</Filter></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Object3d.VS.hlsl"><Filter>シェーダ</Filter></None>
+    <None Include="Object3d.PS.hlsl"><Filter>シェーダ</Filter></None>
+    <None Include="Object3d.hlsli"><Filter>シェーダ</Filter></None>
+    <None Include="Line.VS.hlsl"><Filter>シェーダ</Filter></None>
+    <None Include="Line.PS.hlsl"><Filter>シェーダ</Filter></None>
+    <None Include="Shadow.VS.hlsl"><Filter>シェーダ</Filter></None>
+    <None Include="Shadow.PS.hlsl"><Filter>シェーダ</Filter></None>
+    <None Include="Text.VS.hlsl"><Filter>シェーダ</Filter></None>
+    <None Include="Text.PS.hlsl"><Filter>シェーダ</Filter></None>
+    <None Include="Draw2D.VS.hlsl"><Filter>シェーダ</Filter></None>
+    <None Include="Draw2D.PS.hlsl"><Filter>シェーダ</Filter></None>
+    <None Include="Particle.VS.hlsl"><Filter>シェーダ</Filter></None>
+    <None Include="Particle.PS.hlsl"><Filter>シェーダ</Filter></None>
+    <None Include="Particle.hlsli"><Filter>シェーダ</Filter></None>
+    <None Include="README.md"><Filter>ドキュメント</Filter></None>
+    <None Include="開発README.md"><Filter>ドキュメント</Filter></None>
+  </ItemGroup>
+</Project>

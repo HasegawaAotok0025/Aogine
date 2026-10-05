@@ -1,0 +1,10 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Development" />
+    <BuildType Name="Release" />
+    <Platform Name="x64" />
+  </Configurations>
+  <!-- 並べるのは Aogine だけ。DirectXTex（絵の読み込み）は Aogine のビルドの中で一緒に組み立てる（Aogine.vcxproj の末尾） -->
+  <Project Path="Aogine.vcxproj" Id="37f5287e-ad89-407c-bbbf-56888eb17c62" />
+</Solution>

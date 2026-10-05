@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Aogine
+
+     Engine\  エンジン（DirectX12・入力・音・物理・部品）。ゲームを作る人は基本的に触らない
+     Game\    ゲームのコード。入口は Game\Game.cpp（SetupScene / GetAppStartup）
+
+     エディタ（ImGui）は入っていない。すべてコードで書く。
+     .cpp を足したら、下の ClCompile に1行足すこと（ソリューション エクスプローラーから
+     「追加」すれば自動で足される） -->
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Development|x64">
+      <Configuration>Development</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- ゲーム -->
+    <ClCompile Include="Game\Game.cpp" />
+    <ClCompile Include="main.cpp" />
+    <!-- エンジン -->
+    <ClCompile Include="Engine\Core\AudioEngine.cpp" />
+    <ClCompile Include="Engine\Core\InputEngine.cpp" />
+    <ClCompile Include="Engine\Graphics\Camera.cpp" />
+    <ClCompile Include="Engine\Physics\BoxCollider.cpp" />
+    <ClCompile Include="Engine\Physics\MeshCollider.cpp" />
+    <!-- ImGui（Debugのみ。配布用のReleaseには入れない） -->
+    <ClCompile Include="externals\imgui\imgui.cpp" Condition="'$(Configuration)'=='Debug'" />
+    <ClCompile Include="externals\imgui\imgui_demo.cpp" Condition="'$(Configuration)'=='Debug'" />
+    <ClCompile Include="externals\imgui\imgui_draw.cpp" Condition="'$(Configuration)'=='Debug'" />
+    <ClCompile Include="externals\imgui\imgui_impl_dx12.cpp" Condition="'$(Configuration)'=='Debug'" />
+    <ClCompile Include="externals\imgui\imgui_impl_win32.cpp" Condition="'$(Configuration)'=='Debug'" />
+    <ClCompile Include="externals\imgui\imgui_tables.cpp" Condition="'$(Configuration)'=='Debug'" />
+    <ClCompile Include="externals\imgui\imgui_widgets.cpp" Condition="'$(Configuration)'=='Debug'" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="App.h" />
+    <ClInclude Include="Engine\Engine.h" />
+    <ClInclude Include="Engine\Core\AudioEngine.h" />
+    <ClInclude Include="Engine\Core\InputEngine.h" />
+    <ClInclude Include="Engine\Core\MathUtility.h" />
+    <ClInclude Include="Engine\Core\Quaternion.h" />
+    <ClInclude Include="Engine\Core\SoundBank.h" />
+    <ClInclude Include="Engine\Graphics\Camera.h" />
+    <ClInclude Include="Engine\Graphics\Draw2D.h" />
+    <ClInclude Include="Engine\Graphics\Particle.h" />
+    <ClInclude Include="Engine\Graphics\GraphicsCommon.h" />
+    <ClInclude Include="Engine\Graphics\Object3D.h" />
+    <ClInclude Include="Engine\Graphics\RenderFeatures.h" />
+    <ClInclude Include="Engine\Graphics\Renderer.h" />
+    <ClInclude Include="Engine\Graphics\TextRenderer.h" />
+    <ClInclude Include="Engine\Physics\BoxCollider.h" />
+    <ClInclude Include="Engine\Physics\MeshCollider.h" />
+    <ClInclude Include="Engine\Physics\PhysicsWorld.h" />
+    <ClInclude Include="Engine\Component\Component.h" />
+    <ClInclude Include="Engine\Components\BuiltinComponents.h" />
+    <ClInclude Include="Engine\Components\MotionComponents.h" />
+    <ClInclude Include="Engine\Components\ReactionComponents.h" />
+    <ClInclude Include="Engine\Editor\ObjectInspector.h" />
+    <ClInclude Include="Engine\Editor\ObjectEdits.h" />
+    <ClInclude Include="Engine\DebugView\GizmoMath.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- シェーダは起動のたびにDXCでコンパイルする。実行時のフォルダから読むので、ビルドの対象には入れない -->
+    <None Include="Object3d.VS.hlsl" />
+    <None Include="Object3d.PS.hlsl" />
+    <None Include="Object3d.hlsli" />
+    <None Include="Line.VS.hlsl" />
+    <None Include="Line.PS.hlsl" />
+    <None Include="Shadow.VS.hlsl" />
+    <None Include="Shadow.PS.hlsl" />
+    <None Include="Text.VS.hlsl" />
+    <None Include="Text.PS.hlsl" />
+    <None Include="Draw2D.VS.hlsl" />
+    <None Include="Draw2D.PS.hlsl" />
+    <None Include="Particle.VS.hlsl" />
+    <None Include="Particle.PS.hlsl" />
+    <None Include="Particle.hlsli" />
+    <None Include="README.md" />
+    <None Include="開発README.md" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{37f5287e-ad89-407c-bbbf-56888eb17c62}</ProjectGuid>
+    <RootNamespace>Aogine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <TargetName>Aogine</TargetName>
+    <!-- 実行時のフォルダ。シェーダと resources/ をここから読むので、プロジェクトのフォルダにしておく -->
+    <LocalDebuggerWorkingDirectory>$(ProjectDir)</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;USE_IMGUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <!-- これが無いと、ソース中の日本語の文字列リテラルがANSIとして読まれ、画面の文字が化ける。
+           ソースはBOM無しのUTF-8で置くこと -->
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <!-- 相対で書くこと。絶対パスにすると、別の場所へcloneした人がビルドできない -->
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)externals\DirectXTex</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals/DirectXTex/Bin/Desktop_2022/x64/$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>DirectXTex.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <AdditionalOptions>/ignore:4049 /ignore:4098 %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <!-- シェーダを起動時にコンパイルするのに要る2つを、実行ファイルの隣へ置く。
+           無いと「dxcompiler.dll が見つからない」で窓すら出ない -->
+      <Command>xcopy /D /Y "$(ProjectDir)externals\dxc\*.dll" "$(OutDir)"</Command>
+      <Message>DXC（シェーダのコンパイラ）を実行ファイルの隣へ置いています</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)externals\DirectXTex</AdditionalIncludeDirectories>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals/DirectXTex/Bin/Desktop_2022/x64/$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>DirectXTex.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <AdditionalOptions>/ignore:4049 /ignore:4098 %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy /D /Y "$(ProjectDir)externals\dxc\*.dll" "$(OutDir)"</Command>
+      <Message>DXC（シェーダのコンパイラ）を実行ファイルの隣へ置いています</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)externals\DirectXTex</AdditionalIncludeDirectories>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals/DirectXTex/Bin/Desktop_2022/x64/$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>DirectXTex.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <AdditionalOptions>/ignore:4049 /ignore:4098 %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy /D /Y "$(ProjectDir)externals\dxc\*.dll" "$(OutDir)"</Command>
+      <Message>DXC（シェーダのコンパイラ）を実行ファイルの隣へ置いています</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+  <!-- DirectXTex（絵の読み込み）は、ソリューションに並べずに、Aogine をビルドするときにここで一緒に組み立てる。
+       ソリューションに並べると、F5 がそちら（.lib）を起動しようとして止まるため。
+       ツールセットは Aogine と同じもの（VS2026 の v145）で組む。DirectXTex 側の既定は VS2022 の v143 -->
+  <Target Name="BuildDirectXTex" BeforeTargets="ClCompile">
+    <MSBuild Projects="$(ProjectDir)externals\DirectXTex\DirectXTex_Desktop_2022.vcxproj"
+             Properties="Configuration=$(Configuration);Platform=x64;PlatformToolset=$(PlatformToolset)"
+             Targets="Build" />
+  </Target>
+</Project>
