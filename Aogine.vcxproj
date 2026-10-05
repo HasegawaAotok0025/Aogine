@@ -98,20 +98,20 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -225,7 +225,7 @@
   <ImportGroup Label="ExtensionTargets" />
   <!-- DirectXTex（絵の読み込み）は、ソリューションに並べずに、Aogine をビルドするときにここで一緒に組み立てる。
        ソリューションに並べると、F5 がそちら（.lib）を起動しようとして止まるため。
-       ツールセットは Aogine と同じもの（VS2026 の v145）で組む。DirectXTex 側の既定は VS2022 の v143 -->
+       ツールセットは Aogine と同じもの（開いた Visual Studio の既定: VS2022 なら v143、VS2026 なら v145）で組む -->
   <Target Name="BuildDirectXTex" BeforeTargets="ClCompile">
     <MSBuild Projects="$(ProjectDir)externals\DirectXTex\DirectXTex_Desktop_2022.vcxproj"
              Properties="Configuration=$(Configuration);Platform=x64;PlatformToolset=$(PlatformToolset)"
