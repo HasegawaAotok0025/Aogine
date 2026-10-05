@@ -398,3 +398,5 @@ tools/*.obj
 # 画像は公開しない（手元には置いたまま）
 resources/**/*.png
 resources/*.png
+!resources/uvChecker.png
+!resources/UVCheckObj/uvChecker.png
