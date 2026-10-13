@@ -27,11 +27,22 @@
     <ClCompile Include="Game\Game.cpp" />
     <ClCompile Include="main.cpp" />
     <!-- エンジン -->
-    <ClCompile Include="Engine\Core\AudioEngine.cpp" />
-    <ClCompile Include="Engine\Core\InputEngine.cpp" />
-    <ClCompile Include="Engine\Graphics\Camera.cpp" />
-    <ClCompile Include="Engine\Physics\BoxCollider.cpp" />
-    <ClCompile Include="Engine\Physics\MeshCollider.cpp" />
+    <!-- Developmentではプロジェクト全体の最適化を切り、重いエンジン層のこれらだけ個別に /O2 で最適化する -->
+    <ClCompile Include="Engine\Core\AudioEngine.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
+    </ClCompile>
+    <ClCompile Include="Engine\Core\InputEngine.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
+    </ClCompile>
+    <ClCompile Include="Engine\Graphics\Camera.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
+    </ClCompile>
+    <ClCompile Include="Engine\Physics\BoxCollider.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
+    </ClCompile>
+    <ClCompile Include="Engine\Physics\MeshCollider.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
+    </ClCompile>
     <!-- ImGui（Debugのみ。配布用のReleaseには入れない） -->
     <ClCompile Include="externals\imgui\imgui.cpp" Condition="'$(Configuration)'=='Debug'" />
     <ClCompile Include="externals\imgui\imgui_demo.cpp" Condition="'$(Configuration)'=='Debug'" />
@@ -112,7 +123,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -194,10 +205,11 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -210,6 +222,7 @@
       <AdditionalDependencies>DirectXTex.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <LinkTimeCodeGeneration></LinkTimeCodeGeneration>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <AdditionalOptions>/ignore:4049 /ignore:4098 %(AdditionalOptions)</AdditionalOptions>
     </Link>
