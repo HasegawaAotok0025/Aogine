@@ -44,6 +44,7 @@
     <ClCompile Include="main.cpp"><Filter>Engine</Filter></ClCompile>
     <ClCompile Include="Engine\Core\AudioEngine.cpp"><Filter>Engine\Core</Filter></ClCompile>
     <ClCompile Include="Engine\Core\InputEngine.cpp"><Filter>Engine\Core</Filter></ClCompile>
+    <ClCompile Include="Engine\Core\WinAppInitialize.cpp"><Filter>Engine\Core</Filter></ClCompile>
     <ClCompile Include="Engine\Graphics\Camera.cpp"><Filter>Engine\Graphics</Filter></ClCompile>
     <ClCompile Include="Engine\Physics\BoxCollider.cpp"><Filter>Engine\Physics</Filter></ClCompile>
     <ClCompile Include="Engine\Physics\MeshCollider.cpp"><Filter>Engine\Physics</Filter></ClCompile>
@@ -53,6 +54,7 @@
     <ClInclude Include="Engine\Engine.h"><Filter>Engine</Filter></ClInclude>
     <ClInclude Include="Engine\Core\AudioEngine.h"><Filter>Engine\Core</Filter></ClInclude>
     <ClInclude Include="Engine\Core\InputEngine.h"><Filter>Engine\Core</Filter></ClInclude>
+    <ClInclude Include="Engine\Core\WinAppInitialize.h"><Filter>Engine\Core</Filter></ClInclude>
     <ClInclude Include="Engine\Core\MathUtility.h"><Filter>Engine\Core</Filter></ClInclude>
     <ClInclude Include="Engine\Core\Quaternion.h"><Filter>Engine\Core</Filter></ClInclude>
     <ClInclude Include="Engine\Core\SoundBank.h"><Filter>Engine\Core</Filter></ClInclude>

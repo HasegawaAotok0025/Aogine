@@ -34,6 +34,9 @@
     <ClCompile Include="Engine\Core\InputEngine.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="Engine\Core\WinAppInitialize.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="Engine\Graphics\Camera.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
     </ClCompile>
@@ -57,6 +60,7 @@
     <ClInclude Include="Engine\Engine.h" />
     <ClInclude Include="Engine\Core\AudioEngine.h" />
     <ClInclude Include="Engine\Core\InputEngine.h" />
+    <ClInclude Include="Engine\Core\WinAppInitialize.h" />
     <ClInclude Include="Engine\Core\MathUtility.h" />
     <ClInclude Include="Engine\Core\Quaternion.h" />
     <ClInclude Include="Engine\Core\SoundBank.h" />

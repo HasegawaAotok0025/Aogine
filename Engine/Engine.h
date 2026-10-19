@@ -1,6 +1,7 @@
 // cspell:ignore dxgi dxguid dxcapi IDxc IDXGI DXGI hlsl wvp HLSL
 #pragma once
 #include "Graphics/Renderer.h"
+#include "Core/WinAppInitialize.h"               // WindowsAPI（ウィンドウの生成まわり）
 #include "Graphics/TextRenderer.h"
 #include "Graphics/Particle.h"         // パーティクル（Instancingで粒をまとめて描く）
 #include "Graphics/RenderFeatures.h"   // どのシェーダーを通すか（影など）
@@ -36,13 +37,14 @@ public:
     // デスクトップの解像度でボーダーレスフルスクリーン起動する
     void Initialize(const wchar_t* title, int32_t clientWidth, int32_t clientHeight, bool fullscreen = true,
                     SurfaceColor surfaceColor = SurfaceColor::Srgb) {
-        CoInitializeEx(0, COINIT_MULTITHREADED);
         InitializeLogFile();
 
         fullscreen_ = fullscreen;
         windowedClientWidth_ = clientWidth;   // 窓へ戻すときの大きさ（全画面で始めた場合も、引数の大きさへ戻す）
         windowedClientHeight_ = clientHeight;
-        hwnd_ = CreateGameWindow(title, clientWidth, clientHeight, fullscreen); // fullscreen時はclientWidth/Heightが実解像度に書き換わる
+        winApp_ = new WinAppInitialize();
+        winApp_->Initialize(title, clientWidth, clientHeight, fullscreen); // fullscreen時はclientWidth/Heightが実解像度に書き換わる
+        hwnd_ = winApp_->GetHwnd();
 #ifdef _DEBUG
         EnableDebugLayer();
 #endif
@@ -727,6 +729,8 @@ public:
         input_->Finalize();
         delete input_;
         input_ = nullptr;
+        delete winApp_;
+        winApp_ = nullptr;
         text_.Finalize(); // GDIのフォントハンドルを解放する
         if (gfx_.fenceEvent) { CloseHandle(gfx_.fenceEvent); gfx_.fenceEvent = nullptr; }
         CoUninitialize();
@@ -736,6 +740,7 @@ public:
     ~Engine() { Shutdown(); }
 
 private:
+    WinAppInitialize* winApp_ = nullptr; // Initializeでnew、Shutdownでdelete
     HWND hwnd_ = nullptr;
     bool fullscreen_ = false;
     RECT windowedRect_{};                 // 全画面にする前の窓の位置と大きさ

@@ -7,47 +7,6 @@
 // 「画面に出すための土台」をまとめたファイル。ゲームの内容には一切関与しない。
 // ============================================================================
 
-inline LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
-#ifdef USE_IMGUI
-    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam)) { return true; }
-#endif
-    if (msg == WM_DESTROY) { PostQuitMessage(0); return 0; }
-    return DefWindowProc(hwnd, msg, wparam, lparam);
-}
-
-// ウィンドウクラスの登録とウィンドウの生成
-// fullscreen=trueの場合は「ボーダーレスフルスクリーン」（枠・タイトルバーなしでデスクトップ全体を覆うウィンドウ）にする。
-// DXGIの排他的フルスクリーン（SetFullscreenState）は解像度切り替えやAlt+Tab周りが面倒なため、
-// より単純で安定するこちらの方式を採用している。実際に使われた解像度はclientWidth/clientHeightに書き戻す
-inline HWND CreateGameWindow(const wchar_t* title, int32_t& clientWidth, int32_t& clientHeight, bool fullscreen) {
-    WNDCLASS wc{};
-    wc.lpfnWndProc = WindowProc;
-    wc.lpszClassName = L"CG2WindowClass";
-    wc.hInstance = GetModuleHandle(nullptr);
-    // 窓の上のマウスカーソル。指定しないと、窓の外で最後に出ていた形（読み込み中の輪など）のまま残る
-    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
-    RegisterClass(&wc);
-
-    HWND hwnd = nullptr;
-    if (fullscreen) {
-        clientWidth = GetSystemMetrics(SM_CXSCREEN);
-        clientHeight = GetSystemMetrics(SM_CYSCREEN);
-        // WS_POPUP：タイトルバー・枠なし。位置(0,0)・デスクトップと同じ大きさにすることで全画面に見せる。
-        // WS_EX_APPWINDOW を付けるのは、タスクバーに必ず出すため。
-        // 枠なしで画面を覆っているので、これが無いと他の窓へ移った後で戻る手立てが分かりにくい
-        hwnd = CreateWindowEx(WS_EX_APPWINDOW, wc.lpszClassName, title, WS_POPUP,
-            0, 0, clientWidth, clientHeight, nullptr, nullptr, wc.hInstance, nullptr);
-    } else {
-        RECT wrc = { 0, 0, clientWidth, clientHeight };
-        AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
-        hwnd = CreateWindow(wc.lpszClassName, title, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-            wrc.right - wrc.left, wrc.bottom - wrc.top, nullptr, nullptr, wc.hInstance, nullptr);
-    }
-    ShowWindow(hwnd, SW_SHOW);
-    return hwnd;
-}
-
-
 #ifdef _DEBUG
 // デバッグレイヤーの有効化
 inline void EnableDebugLayer() {
