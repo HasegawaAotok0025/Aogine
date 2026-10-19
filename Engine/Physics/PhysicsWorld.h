@@ -126,6 +126,11 @@ public:
     // 静止メッシュコライダーが「今フレーム誰かと衝突しているか」（ワイヤーフレームの緑/赤表示に使う）
     const std::vector<bool>& MeshCollidingFlags() const { return meshCollidingFlags_; }
 
+    // メッシュコライダーの三角形を、次のStep()で全部作り直させる。
+    // 作り直しは位置・回転・大きさが変わったときにしか起きないので、
+    // 形を差し替えたとき・オブジェクトが消えて並びがずれたときは、これで知らせる
+    void InvalidateMeshCaches() { meshCacheValid_.assign(meshCacheValid_.size(), false); }
+
     // シーンを組み替えたときなど、接触の履歴を捨てて「何にも触れていない」状態から始め直す。
     // これをしないと、消えたオブジェクトとの接触が残ったままExitイベントが遅れて飛ぶことがある
     void ClearContactHistory() {

@@ -9,6 +9,9 @@ SamplerState gSampler : register(s0);
 
 cbuffer DrawColor : register(b1) {
     float4 gColor;
+    // 絵のどこを貼るか（UVの左上xy・大きさzw）。全体を貼るときは (0,0,1,1)。
+    // 1枚の絵に並べたコマやアイコンを、切り取って使うためのもの
+    float4 gUvRect;
 };
 
 struct PixelShaderInput {
@@ -22,7 +25,7 @@ struct PixelShaderOutput {
 
 PixelShaderOutput main(PixelShaderInput input) {
     PixelShaderOutput output;
-    output.color = gTexture.Sample(gSampler, input.texcoord) * gColor;
+    output.color = gTexture.Sample(gSampler, gUvRect.xy + input.texcoord * gUvRect.zw) * gColor;
     // 完全に透明な点は書かない。半透明を重ねたときに、
     // 透明な部分が背景を薄く濁らせるのを防ぐ
     if (output.color.a <= 0.001f) { discard; }

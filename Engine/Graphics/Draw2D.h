@@ -155,6 +155,8 @@ struct Draw2DCommand {
     // ここに持たせているのは、図形と絵を1つの並びで扱って
     // 呼んだ順＝重なり順にするため
     D3D12_GPU_DESCRIPTOR_HANDLE texture{};
+    // 絵のどこを貼るか（UVの左上xy・大きさzw）。既定は絵の全体
+    Vector4 uvRect{ 0.0f, 0.0f, 1.0f, 1.0f };
 };
 
 // 画面全体を-1〜1で表す座標（NDC）に、そのまま四角を置くための行列。

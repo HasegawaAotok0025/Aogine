@@ -12,6 +12,7 @@
 #include "Editor/ObjectInspector.h"          // デバッグビュー中に出す、オブジェクトの設定パネル
 #include "Editor/ObjectEdits.h"              // デバッグビューで変えた内容の保存と読み込み
 #include "DebugView/GizmoMath.h"             // デバッグビュー（F2）のギズモの計算
+#include <memory>
 
 // レイがオブジェクトに当たった結果（Engine::Raycast）
 struct RaycastHit {
@@ -43,7 +44,7 @@ public:
         fullscreen_ = fullscreen;
         windowedClientWidth_ = clientWidth;   // 窓へ戻すときの大きさ（全画面で始めた場合も、引数の大きさへ戻す）
         windowedClientHeight_ = clientHeight;
-        winApp_ = new WinAppInitialize();
+        winApp_ = std::make_unique<WinAppInitialize>();
         winApp_->Initialize(title, clientWidth, clientHeight, fullscreen); // fullscreen時はclientWidth/Heightが実解像度に書き換わる
         hwnd_ = winApp_->GetHwnd();
 #ifdef _DEBUG
@@ -71,10 +72,10 @@ public:
                                                                         : DXGI_FORMAT_R8G8B8A8_UNORM);
         imguiInitialized_ = true;
 #endif
-        input_ = new InputEngine();
+        input_ = std::make_unique<InputEngine>();
         input_->Initialize(hwnd_);
-        camera_.Initialize((float)clientWidth / (float)clientHeight, input_);
-        debugCamera_.Initialize((float)clientWidth / (float)clientHeight, input_);
+        camera_.Initialize((float)clientWidth / (float)clientHeight, input_.get());
+        debugCamera_.Initialize((float)clientWidth / (float)clientHeight, input_.get());
         debugCamera_.SetFreeMove(true, true); // 右ボタンを押している間だけ飛べる（Unityと同じ）
         draw2DTriangleMesh_ = CreateDraw2DCircleMesh(gfx_.device.Get(), 3); // ギズモの矢じり
         audio_.Initialize();
@@ -131,6 +132,28 @@ public:
             if (id != 0) { ids.push_back(id); }
         }
         return ids;
+    }
+
+    // 置いてある物の形を、別のobjモデルに差し替える（位置・色・部品・物理の設定はそのまま）。
+    // 読み込みは初回だけで、2回目以降はキャッシュを使うので、毎フレーム切り替えても重くならない。
+    // objが部品に分かれている場合は、最初の部品の形になる。差し替えられなければfalse
+    bool SetModel(uint32_t id, const std::string& directoryPath, const std::string& filename) {
+        Object3D* obj = FindObjectById(id);
+        if (!obj) { return false; }
+        std::vector<std::string> keys = GetOrLoadCachedModelKeys(directoryPath, filename);
+        if (keys.empty()) { return false; }
+        auto it = modelCache_.find(keys.front());
+        if (it == modelCache_.end()) { return false; }
+
+        const CachedModelData& model = it->second;
+        AssignMesh(*obj, model.mesh);
+        obj->isSprite = false;
+        obj->hasOwnTexture = model.hasOwnTexture;
+        obj->textureResource = model.textureResource;
+        obj->textureSrvHandleGPU = model.textureSrvHandleGPU;
+        obj->meshLineData = MeshLineData{}; // 当たり判定の線は、次に描くときに新しい形で作り直す
+        physics_.InvalidateMeshCaches();
+        return true;
     }
 
     // 読み込み済みモデルのキャッシュ一覧
@@ -587,6 +610,24 @@ public:
                      texture->width * scale, texture->height * scale, rotation, color, false);
     }
 
+    // 絵の一部だけを切り取って置く。1枚の絵に並べたコマ（アニメーション）やアイコンを使い分けるときに使う。
+    // srcX/srcY/srcWidth/srcHeight は、元の絵の中の範囲（ピクセル・左上が原点）。
+    // 置く大きさは、切り取った範囲の大きさ × scale
+    void Sprite2DRegion(const std::string& texturePath, float centerX, float centerY,
+                        float srcX, float srcY, float srcWidth, float srcHeight,
+                        float rotation = 0.0f, const Vector4& color = Vector4{ 1.0f, 1.0f, 1.0f, 1.0f },
+                        float scale = 1.0f) {
+        PushSprite2DRegion(texturePath, { centerX, centerY }, srcX, srcY, srcWidth, srcHeight, rotation, color, scale, true);
+    }
+
+    // カメラを通さない版（HUDのアイコンなど）
+    void HudSprite2DRegion(const std::string& texturePath, float centerX, float centerY,
+                           float srcX, float srcY, float srcWidth, float srcHeight,
+                           float rotation = 0.0f, const Vector4& color = Vector4{ 1.0f, 1.0f, 1.0f, 1.0f },
+                           float scale = 1.0f) {
+        PushSprite2DRegion(texturePath, { centerX, centerY }, srcX, srcY, srcWidth, srcHeight, rotation, color, scale, false);
+    }
+
     // 絵の大きさ（ピクセル）。置く前に大きさを知りたいときに使う。
     // 読めなければ 0,0 を返す
     Vector2 Sprite2DSize(const std::string& texturePath) {
@@ -725,27 +766,25 @@ public:
         audio_.Finalize();
         sounds_.UnloadAll(audio_);
         input_->Finalize();
-        delete input_;
-        input_ = nullptr;
+        input_.reset();
         text_.Finalize(); // GDIのフォントハンドルを解放する
         if (gfx_.fenceEvent) { CloseHandle(gfx_.fenceEvent); gfx_.fenceEvent = nullptr; }
         // COMの終了は最後（WIC・XAudio2などがCOMを使い終わってから）
         winApp_->Finalize();
-        delete winApp_;
-        winApp_ = nullptr;
+        winApp_.reset();
         initialized_ = false;
     }
 
     ~Engine() { Shutdown(); }
 
 private:
-    WinAppInitialize* winApp_ = nullptr; // Initializeでnew、Shutdownでdelete
+    std::unique_ptr<WinAppInitialize> winApp_; // Initializeで作り、Shutdownで手放す
     HWND hwnd_ = nullptr;
     bool fullscreen_ = false;
     RECT windowedRect_{};                 // 全画面にする前の窓の位置と大きさ
     bool hasWindowedRect_ = false;
-    int32_t windowedClientWidth_ = 1280;
-    int32_t windowedClientHeight_ = 720;
+    int32_t windowedClientWidth_ = WinAppInitialize::kDefaultClientWidth;
+    int32_t windowedClientHeight_ = WinAppInitialize::kDefaultClientHeight;
 
     // デバッグビューで変えた内容の保存
     std::map<std::string, ObjectEdit> savedEdits_;                // ファイルに書いてある内容（キーは名前#番号）
@@ -798,7 +837,7 @@ private:
     Camera camera_;
     AudioEngine audio_;
     SoundBank sounds_;                // 名前で引ける音の置き場（中身はゲームが登録する）
-    InputEngine* input_ = nullptr; // Initializeでnew、Shutdownでdelete
+    std::unique_ptr<InputEngine> input_;       // Initializeで作り、Shutdownで手放す
     std::vector<Object3D> objects_;
     std::unordered_map<std::string, CachedModelData> modelCache_; // キー："フォルダ/ファイル名"（複数部品なら末尾に"#部品名"）
     // "フォルダ/ファイル名" → そのファイルから作られた部品の見出し一覧
@@ -1243,6 +1282,7 @@ private:
         if (destroyAllRequested_) {
             objects_.clear();
             physics_.ClearContactHistory();
+            physics_.InvalidateMeshCaches();
             destroyAllRequested_ = false;
             pendingDestroy_.clear();
             return;
@@ -1254,6 +1294,8 @@ private:
         pendingDestroy_.clear();
         // 消えた相手との「触れていた」記録を残すと、次のステップで消えた物のExitが飛ぶ
         physics_.ClearContactHistory();
+        // 並びがずれるので、メッシュの当たり判定を作り直させる（数が同じでも別の物を指しうる）
+        physics_.InvalidateMeshCaches();
     }
 
     // 物理が作った当たりを、ゲームと、挿してある部品の両方へ配る
@@ -1794,13 +1836,25 @@ private:
 
     void PushSprite2D(const Loaded2DTexture* texture, const Vector2& position,
                       float width, float height, float rotation, const Vector4& color,
-                      bool throughCamera) {
+                      bool throughCamera, const Vector4& uvRect = { 0.0f, 0.0f, 1.0f, 1.0f }) {
         if (color.w <= 0.001f || !texture) { return; }
         if (draw2DCommands_.size() >= (size_t)kMaxDraw2D) { return; }
         Draw2DCommand command{ Draw2DCommand::Kind::Quad, position, width, height,
                                rotation, color, throughCamera };
         command.texture = texture->srv;
+        command.uvRect = uvRect;
         draw2DCommands_.push_back(command);
+    }
+
+    // 元の絵のピクセル範囲を、UVの範囲（0〜1）へ直して積む
+    void PushSprite2DRegion(const std::string& texturePath, const Vector2& position,
+                            float srcX, float srcY, float srcWidth, float srcHeight,
+                            float rotation, const Vector4& color, float scale, bool throughCamera) {
+        const Loaded2DTexture* texture = GetOr2DLoadTexture(texturePath);
+        if (!texture || texture->width <= 0.0f || texture->height <= 0.0f) { return; }
+        const Vector4 uvRect{ srcX / texture->width, srcY / texture->height,
+                              srcWidth / texture->width, srcHeight / texture->height };
+        PushSprite2D(texture, position, srcWidth * scale, srcHeight * scale, rotation, color, throughCamera, uvRect);
     }
 
     // 積んだ2Dの命令を、2D用のパイプラインへ流す
@@ -1843,9 +1897,11 @@ private:
             D3D12_GPU_DESCRIPTOR_HANDLE srv = (command.texture.ptr != 0)
                 ? command.texture : textures_.whiteSrv;
 
-            const float rgba[4] = { command.color.x, command.color.y, command.color.z, command.color.w };
+            // 色と、絵のどこを貼るか（UVの範囲）をまとめて渡す
+            const float constants[8] = { command.color.x, command.color.y, command.color.z, command.color.w,
+                                         command.uvRect.x, command.uvRect.y, command.uvRect.z, command.uvRect.w };
             gfx_.commandList->SetGraphicsRootConstantBufferView(0, cb.resource->GetGPUVirtualAddress());
-            gfx_.commandList->SetGraphicsRoot32BitConstants(1, 4, rgba, 0);
+            gfx_.commandList->SetGraphicsRoot32BitConstants(1, 8, constants, 0);
             gfx_.commandList->SetGraphicsRootDescriptorTable(2, srv);
             gfx_.commandList->IASetVertexBuffers(0, 1, &mesh.vbv);
             gfx_.commandList->IASetIndexBuffer(&mesh.ibv);

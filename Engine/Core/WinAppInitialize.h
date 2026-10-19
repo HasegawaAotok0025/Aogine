@@ -7,6 +7,10 @@
 // ============================================================================
 class WinAppInitialize {
 public:
+    // 窓で起動するときのクライアント領域の大きさ（全画面のときはデスクトップの解像度になる）
+    static constexpr int32_t kDefaultClientWidth = 1280;
+    static constexpr int32_t kDefaultClientHeight = 720;
+
     // ウィンドウプロシージャ
     static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 

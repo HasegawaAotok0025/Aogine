@@ -65,7 +65,7 @@ public:
         for (auto& [name, entry] : entries_) {
             if (entry.loaded) { ++loaded; continue; }
             entry.data = audio.LoadWave(entry.filePath);
-            entry.loaded = (entry.data.pBuffer != nullptr);
+            entry.loaded = entry.data.IsLoaded();
             if (entry.loaded) { ++loaded; }
         }
         audio_ = &audio;

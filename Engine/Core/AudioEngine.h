@@ -7,11 +7,13 @@
 
 using Microsoft::WRL::ComPtr;
 
-// LoadWaveで読み込んだWAVサウンドデータ（フォーマット情報＋PCMデータ本体）
+// LoadWaveで読み込んだWAVサウンドデータ（フォーマット情報＋PCMデータ本体）。
+// 本体はvectorで持つので、解放し忘れも二重解放も起きない。
+// 鳴っている間はXAudio2がこの中身を直接読むので、鳴り終わるまでは消さないこと
 struct SoundData {
     WAVEFORMATEX wfex{};
-    BYTE* pBuffer = nullptr;
-    uint32_t bufferSize = 0;
+    std::vector<BYTE> buffer;
+    bool IsLoaded() const { return !buffer.empty(); }
 };
 
 // 再生中の1つのサウンドを操作するためのハンドル。AudioEngine::Playの戻り値として受け取る
@@ -36,7 +38,7 @@ public:
 
     // WAVファイルを読み込む（例："resources/Audio/se_hit.wav"）
     SoundData LoadWave(const std::string& filePath);
-    // LoadWaveで確保したバッファを解放する。使い終わったサウンドは必ず呼ぶこと
+    // 音のデータを手放す（呼ばなくてもSoundDataが消えるときに自動で解放される）
     void Unload(SoundData& soundData);
 
     // 再生する。loop=trueでループ再生。戻り値のSoundVoiceで後から停止・音量/ピッチ調整ができる。

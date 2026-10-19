@@ -62,9 +62,10 @@ main.cpp
 |---|---|---|
 | `AddCube()` | `Object3D&` | 立方体（1辺2、中心が原点） |
 | `AddSphere()` | `Object3D&` | 球 |
-| `AddSprite()` | `Object3D&` | 画面座標の板（2Dの `Sprite2D` の方が扱いやすい） |
+| `AddSprite()` | `Object3D&` | 1280x720の板の上に置く板（2Dの `Sprite2D` の方が扱いやすい） |
 | `AddModel("resources/フォルダ", "ファイル.obj")` | `Object3D&` | OBJを読んで置く。2回目以降は読み込み済みを使い回す |
 | `AddModelParts(dir, file)` | `std::vector<uint32_t>` | OBJが複数の部品(o/g)に分かれているとき、全部品を置いてidを返す |
+| `SetModel(id, dir, file)` | `bool` | 置いてある物の形を別のOBJに差し替える（位置・色・部品・物理はそのまま。読み込みは初回だけ） |
 
 > 置いた直後は原点・大きさ1・回転0。立方体は1辺2、球は半径1。
 >
@@ -302,8 +303,9 @@ engine.SetCollisionCallback([&](const CollisionEvent& e) {
 | `Line2D(x0, y0, x1, y1, 太さ, 色)` | 線 |
 | `Sprite2D("resources/…png", x, y, 回転=0, 色=白, 倍率=1)` | 絵（元の大きさ） |
 | `Sprite2DSized(path, x, y, 幅, 高さ, 回転, 色)` | 絵（大きさ指定） |
+| `Sprite2DRegion(path, x, y, 元のx, 元のy, 元の幅, 元の高さ, 回転, 色, 倍率)` | 絵の一部を切り取って出す（コマ送り・アイコンの並んだ絵） |
 | `Sprite2DSize(path)` | 絵の大きさ |
-| `HudRect2D` / `HudCircle2D` / `HudSprite2D` | 2Dカメラを通さない版（UI用） |
+| `HudRect2D` / `HudCircle2D` / `HudSprite2D` / `HudSprite2DRegion` | 2Dカメラを通さない版（UI用） |
 | `Get2DCamera()` | 2Dカメラ：`focus`(見る場所) / `zoom` / `Shake(強さ)` |
 
 3Dの上・文字の下に描かれる。

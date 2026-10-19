@@ -790,7 +790,7 @@ inline Draw2DMesh CreateDraw2DCircleMesh(ID3D12Device* device, int segments = 32
 inline LinePipeline CreateDraw2DPipeline(ID3D12Device* device, Object3DPipeline& sharedCompiler) {
     LinePipeline pipeline;
 
-    // 0: WVP（頂点シェーダ） / 1: 掛ける色（ピクセルシェーダ） / 2: テクスチャ
+    // 0: WVP（頂点シェーダ） / 1: 掛ける色と切り取る範囲（ピクセルシェーダ） / 2: テクスチャ
     D3D12_DESCRIPTOR_RANGE srvRange[1] = {};
     srvRange[0].BaseShaderRegister = 0;
     srvRange[0].NumDescriptors = 1;
@@ -805,7 +805,7 @@ inline LinePipeline CreateDraw2DPipeline(ID3D12Device* device, Object3DPipeline&
     rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
     rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     rootParameters[1].Constants.ShaderRegister = 1;
-    rootParameters[1].Constants.Num32BitValues = 4;
+    rootParameters[1].Constants.Num32BitValues = 8; // 色(4)＋切り取る範囲(4)
 
     rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;

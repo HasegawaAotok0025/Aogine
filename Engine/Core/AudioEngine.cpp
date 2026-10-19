@@ -97,42 +97,40 @@ SoundData AudioEngine::LoadWave(const std::string& filePath) {
         return soundData;
     }
 
-    char* buffer = new char[data.size];
-    file.read(buffer, data.size);
+    std::vector<BYTE> buffer(static_cast<size_t>(data.size));
+    file.read(reinterpret_cast<char*>(buffer.data()), data.size);
     std::streamsize actuallyRead = file.gcount();
     file.close();
     if (actuallyRead <= 0) {
-        delete[] buffer;
         Log("[LoadWave] 音のデータを読み切れませんでした: " + filePath);
         return soundData;
     }
 
+    // 書かれている長さより短いファイルもあるので、実際に読めた量に詰める
+    buffer.resize(static_cast<size_t>(actuallyRead));
     soundData.wfex = wfex;
-    soundData.pBuffer = reinterpret_cast<BYTE*>(buffer);
-    // 書かれている長さより短いファイルもあるので、実際に読めた量を使う
-    soundData.bufferSize = static_cast<uint32_t>(actuallyRead);
+    soundData.buffer = std::move(buffer);
     return soundData;
 }
 
 void AudioEngine::Unload(SoundData& soundData) {
-    delete[] soundData.pBuffer;
-    soundData.pBuffer = nullptr;
-    soundData.bufferSize = 0;
+    soundData.buffer.clear();
+    soundData.buffer.shrink_to_fit(); // clearだけでは確保した領域が残る
 }
 
 SoundVoice AudioEngine::Play(const SoundData& soundData, bool loop, float volume) {
     SoundVoice handle;
     // 読み込めなかった音は、中身の無いSoundDataのまま渡ってくる。
     // ここで弾かないと、鳴らそうとした場所すべてで落ちることになる
-    if (!xAudio2_ || !soundData.pBuffer || soundData.bufferSize == 0) { return handle; }
+    if (!xAudio2_ || !soundData.IsLoaded()) { return handle; }
 
     IXAudio2SourceVoice* sourceVoice = nullptr;
     HRESULT hr = xAudio2_->CreateSourceVoice(&sourceVoice, &soundData.wfex);
     if (FAILED(hr) || !sourceVoice) { return handle; }
 
     XAUDIO2_BUFFER buffer{};
-    buffer.pAudioData = soundData.pBuffer;
-    buffer.AudioBytes = soundData.bufferSize;
+    buffer.pAudioData = soundData.buffer.data();
+    buffer.AudioBytes = static_cast<UINT32>(soundData.buffer.size());
     buffer.Flags = XAUDIO2_END_OF_STREAM;
     buffer.LoopCount = loop ? XAUDIO2_LOOP_INFINITE : 0;
 
@@ -147,14 +145,14 @@ SoundVoice AudioEngine::Play(const SoundData& soundData, bool loop, float volume
 }
 
 void AudioEngine::PlayOneShot(const SoundData& soundData, float volume, float pitch) {
-    if (!xAudio2_ || !soundData.pBuffer || soundData.bufferSize == 0) { return; }
+    if (!xAudio2_ || !soundData.IsLoaded()) { return; }
 
     IXAudio2SourceVoice* sourceVoice = nullptr;
     if (FAILED(xAudio2_->CreateSourceVoice(&sourceVoice, &soundData.wfex)) || !sourceVoice) { return; }
 
     XAUDIO2_BUFFER buffer{};
-    buffer.pAudioData = soundData.pBuffer;
-    buffer.AudioBytes = soundData.bufferSize;
+    buffer.pAudioData = soundData.buffer.data();
+    buffer.AudioBytes = static_cast<UINT32>(soundData.buffer.size());
     buffer.Flags = XAUDIO2_END_OF_STREAM;
 
     sourceVoice->SetVolume(volume);

@@ -5,7 +5,8 @@
 // ゲームの入口。ここから書き始める。
 //
 // 今入っているのは、エンジンの使い方を見せるための小さな見本：
-//   床・半透明の箱・Instancingで並べた板・火のようなパーティクル
+//   床・半透明の箱・Instancingで並べた板・火のようなパーティクル・
+//   Mキーで形が切り替わるモデル・絵の一部を切り取ったアイコン
 // 作り始めるときは、中身を消して自分のものに置き換えてよい。
 //
 // 使える関数の一覧は 開発README.md を参照。
@@ -70,6 +71,24 @@ void SetupScene(Engine& engine) {
         fire.position = { 3.0f, 0.5f, 0.0f };
         engine.AddParticleEmitter(fire);
     }
+
+    // --- モデルの差し替えの見本：Mキーで、スザンヌとUVチェッカーの形を切り替える ---
+    // 参照ではなくidで控える（物が増えると参照は古い場所を指すため）
+    const uint32_t modelId = engine.AddModel("resources/SuzannuObj", "suzannu.obj").id;
+    if (Object3D* model = engine.FindById(modelId)) { model->transform.translate = { -3.0f, 1.0f, 0.0f }; }
+
+    engine.SetUpdateCallback([&engine, modelId, showingSuzanne = true](float) mutable {
+        if (engine.Input().IsKeyTriggered(DIK_M)) {
+            showingSuzanne = !showingSuzanne;
+            if (showingSuzanne) { engine.SetModel(modelId, "resources/SuzannuObj", "suzannu.obj"); }
+            else { engine.SetModel(modelId, "resources/UVCheckObj", "UVChecker.obj"); }
+        }
+
+        // --- 絵の切り取りの見本：512x512の絵の左上4分の1（256x256）だけを、右上に小さく出す ---
+        engine.HudSprite2DRegion("resources/uvChecker.png", 1170.0f, 110.0f, 0.0f, 0.0f, 256.0f, 256.0f,
+                                 0.0f, Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.5f);
+        engine.DrawText(Engine::kUiMarginX, Engine::kUiMarginY, "[M] モデルを切り替える", 20.0f);
+    });
 }
 
 AppStartup GetAppStartup() {

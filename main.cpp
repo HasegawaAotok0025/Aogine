@@ -14,8 +14,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR commandLine, _
     if (commandLine && strstr(commandLine, "-window") != nullptr) { fullscreen = false; }
 
     Engine engine;
-    // 全画面のときはデスクトップの解像度で起動する（1280,720は窓のときの大きさ）
-    engine.Initialize(startup.windowTitle, 1280, 720, fullscreen,
+    // 全画面のときはデスクトップの解像度で起動する（既定の大きさは窓のときに使う）
+    engine.Initialize(startup.windowTitle, WinAppInitialize::kDefaultClientWidth, WinAppInitialize::kDefaultClientHeight, fullscreen,
                       startup.convertToSrgbOnOutput ? SurfaceColor::Srgb : SurfaceColor::AsIs);
 
     SetupScene(engine);
