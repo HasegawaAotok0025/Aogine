@@ -175,13 +175,6 @@ public:
         return size; // まだ切り出していない字。だいたい正方形とみなす
     }
 
-    // 行数から高さ[px]を求める（縦方向の中央寄せに使う）
-    float MeasureHeight(const std::string& utf8Text, float size) const {
-        int lines = 1;
-        for (char c : utf8Text) { if (c == '\n') { lines++; } }
-        return size + (float)(lines - 1) * size * kLineSpacing;
-    }
-
     // 溜めた文字をまとめて1回で描く。呼んだあとは空になるので、毎フレーム最後に1回呼べばよい。
     // 描画対象・ビューポートはすでに設定済みである前提（RenderFrameの中から呼ぶ）
     void Flush(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, int screenWidth, int screenHeight) {
@@ -209,9 +202,6 @@ public:
         TransitionAtlas(commandList, D3D12_RESOURCE_STATE_COPY_DEST);
         vertexCount_ = 0;
     }
-
-    // このフレームに溜まっている文字数（デバッグ表示用）
-    int QueuedGlyphCount() const { return vertexCount_ / 6; }
 
 private:
     static constexpr float kLineSpacing = 1.25f; // 改行1つぶんの行送り（文字の高さに対する倍率）

@@ -15,6 +15,9 @@ public:
     // 実際に使われた解像度をclientWidth/clientHeightに書き戻す
     void Initialize(const wchar_t* title, int32_t& clientWidth, int32_t& clientHeight, bool fullscreen);
 
+    // COMの終了。Initializeで始めたものをここで閉じる
+    void Finalize();
+
     HWND GetHwnd() const { return hwnd_; }
 
 private:

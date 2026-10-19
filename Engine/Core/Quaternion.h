@@ -64,11 +64,6 @@ inline Vector3 RotateVector(const Quaternion& q, const Vector3& v) {
     };
 }
 
-// ワールド→ローカルへベクトルを戻す（慣性テンソルをローカル基準で扱うために使う）
-inline Vector3 InverseRotateVector(const Quaternion& q, const Vector3& v) {
-    return RotateVector(Conjugate(q), v);
-}
-
 // クォータニオン→回転行列（行ベクトル規約。MakeAffineMatrixの回転部分と同じ形）
 inline Matrix4x4 MatrixFromQuaternion(const Quaternion& q) {
     Matrix4x4 m = MakeIdentity4x4();

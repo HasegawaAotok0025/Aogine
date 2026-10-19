@@ -4,29 +4,12 @@
 #include <limits>
 
 namespace {
-    Vector3 Sub(const Vector3& a, const Vector3& b) { return { a.x - b.x, a.y - b.y, a.z - b.z }; }
-    Vector3 Add(const Vector3& a, const Vector3& b) { return { a.x + b.x, a.y + b.y, a.z + b.z }; }
-    Vector3 Scale(const Vector3& v, float s) { return { v.x * s, v.y * s, v.z * s }; }
-    float Dot(const Vector3& a, const Vector3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-    Vector3 Cross(const Vector3& a, const Vector3& b) {
-        return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
-    }
-    float Length(const Vector3& v) { return std::sqrt(Dot(v, v)); }
-    Vector3 Normalize(const Vector3& v) {
-        float len = Length(v);
-        if (len < 1e-8f) { return { 0.0f, 1.0f, 0.0f }; }
-        return Scale(v, 1.0f / len);
-    }
-
     // セル座標(x,y,z)を1つのキーにパックする（21bitずつ、負の座標も扱えるようbiasを足す）
     int64_t CellKey(int x, int y, int z) {
         const int64_t bias = 1 << 20;
         const int64_t mask = (1 << 21) - 1;
         return ((int64_t)(x + bias) & mask) | (((int64_t)(y + bias) & mask) << 21) | (((int64_t)(z + bias) & mask) << 42);
     }
-
-    // 点のワールド変換にはMathUtility.hのTransformPoint（共通の公開関数）を使う
-    // （以前はここにファイルローカル版を持っていたが、公開版と同名・同シグネチャで曖昧になるため削除した）
 
     // 三角形abc上で、点pに一番近い点を求める（Ericson "Real-Time Collision Detection" のアルゴリズム）
     Vector3 ClosestPointOnTriangle(const Vector3& p, const Vector3& a, const Vector3& b, const Vector3& c) {

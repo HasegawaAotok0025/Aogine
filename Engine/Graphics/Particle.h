@@ -411,7 +411,7 @@ public:
         }
         if (!changed) { return; }
         std::ofstream file(kFile, std::ios::trunc);
-        file << "# CG3 saved particle emitters (key \\t settings)\n";
+        file << "# Aogine saved particle emitters (key \\t settings)\n";
         for (const auto& [key, text] : saved_) { file << key << '\t' << text << '\n'; }
     }
 
@@ -462,13 +462,13 @@ private:
         Vector3 t1 = { ref.y * d.z - ref.z * d.y, ref.z * d.x - ref.x * d.z, ref.x * d.y - ref.y * d.x };
         float l1 = std::sqrt(t1.x * t1.x + t1.y * t1.y + t1.z * t1.z);
         t1 = { t1.x / l1, t1.y / l1, t1.z / l1 };
-        Vector3 t2 = { d.y * t1.z - d.z * t1.y, d.z * t1.x - d.x * t1.z, d.x * t1.y - d.y * t1.x };
+        Vector3 t2 = Cross(d, t1);
 
         // 円錐の中で偏りなく選ぶ（cosθを一様にする）
-        const float cosMax = std::cos((std::min)(e.spread, 3.14159265f));
+        const float cosMax = std::cos((std::min)(e.spread, kPi));
         const float cosT = 1.0f - Random(0.0f, 1.0f) * (1.0f - cosMax);
         const float sinT = std::sqrt((std::max)(0.0f, 1.0f - cosT * cosT));
-        const float phi = Random(0.0f, 6.2831853f);
+        const float phi = Random(0.0f, kTwoPi);
         const float cx = std::cos(phi) * sinT, sy = std::sin(phi) * sinT;
         const Vector3 dir = { d.x * cosT + t1.x * cx + t2.x * sy,
                               d.y * cosT + t1.y * cx + t2.y * sy,

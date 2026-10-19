@@ -288,7 +288,7 @@ engine.SetCollisionCallback([&](const CollisionEvent& e) {
 | `WorldToUi(3Dの位置, cam.GetViewProjectionMatrix(), x, y)` | 3Dの位置を板の座標へ（頭上に名前を出すなど） |
 
 書体 `TextFace::Display`(見出し) / `Body`(本文・日本語) / `Numeric`(数字) / `Label`(注記)。
-定数 `Engine::kUiWidth`(1280) / `kUiHeight`(720) / `kUiMarginX` / `kUiMarginY`（端の余白）。
+板の大きさは `ScreenWidth()` / `ScreenHeight()`（既定 1280x720。2Dの描画と共通で、`Get2DCanvas()` から変えられる）。端の余白は定数 `Engine::kUiMarginX` / `kUiMarginY`。
 
 ### 2Dの図形と絵
 

@@ -23,8 +23,9 @@ struct RaycastHit {
 // ============================================================================
 // Engine：DirectX12・入力・音・物理をまとめて隠すクラス
 //
-// ゲームのコードから触るのはこのクラスだけでよい。エディタは無い。
+// ゲームのコードから触るのはこのクラスだけでよい。
 // 何を置くか・毎フレーム何をするかは、すべてコード（Game/ 以下）で書く。
+// デバッグビュー（F2）は、コードで置いた物の位置や色を画面で調整して保存する道具（Debugのみ）。
 //
 // 1フレームの流れ（Run）：
 //   入力 → 物理（固定1/60秒、衝突を通知） → 部品の更新 → ゲームの更新(SetUpdateCallback)
@@ -57,7 +58,7 @@ public:
         draw2DPipeline_ = CreateDraw2DPipeline(gfx_.device.Get(), pipeline_); // 2Dの図形と絵
         draw2DQuadMesh_ = CreateDraw2DQuadMesh(gfx_.device.Get());
         draw2DCircleMesh_ = CreateDraw2DCircleMesh(gfx_.device.Get());
-        for (int i = 0; i < kMaxDraw2DRects; ++i) { draw2DTransformBuffers_.push_back(CreateLineTransformBuffer(gfx_.device.Get())); }
+        for (int i = 0; i < kMaxDraw2D; ++i) { draw2DTransformBuffers_.push_back(CreateLineTransformBuffer(gfx_.device.Get())); }
         for (int i = 0; i < kMaxShadows; ++i) { shadowTransformBuffers_.push_back(CreateLineTransformBuffer(gfx_.device.Get())); }
         // 当たり判定の枠（デバッグ表示）用のWVP定数バッファ。1本を使い回すと前の値を上書きしてしまうので数を用意する
         for (int i = 0; i < kLineTransformBufferCount; ++i) { lineTransformBuffers_.push_back(CreateLineTransformBuffer(gfx_.device.Get())); }
@@ -89,7 +90,8 @@ public:
 
     // 球を置きたいだけならこれを1行呼ぶだけでよい
     Object3D& AddSphere() { return AddPrimitive(PrimitiveKind::Sphere); }
-    // スプライト（平行投影の板ポリゴン）を置きたいだけならこれを1行呼ぶだけでよい
+    // スプライト（平行投影の板ポリゴン）を置きたいだけならこれを1行呼ぶだけでよい。
+    // 位置は文字と同じ1280x720の板の上の値（左上が原点）。3Dの物理やレイの対象にはならない
     Object3D& AddSprite() { return AddPrimitive(PrimitiveKind::Sprite); }
     // 立方体を置きたいだけならこれを1行呼ぶだけでよい
     Object3D& AddCube() { return AddPrimitive(PrimitiveKind::Cube); }
@@ -178,8 +180,9 @@ public:
     //
     // 端いっぱいまでは使わない。放送でいうセーフエリアと同じ考えで、
     // 置くときは kUiMarginX / kUiMarginY だけ内側から始めるとよい。
-    static constexpr float kUiWidth = 1280.0f;
-    static constexpr float kUiHeight = 720.0f;
+    //
+    // 板の大きさは2Dの描画と共通で、Get2DCanvas() が持っている（既定 1280x720）。
+    // 文字・2D・スプライトが同じ板を見るので、大きさを変えても互いにずれない
     // 端からの余白。放送の「タイトルセーフ」（端から5%）に近い取り方で、
     // 端に寄りすぎず、かつ詰まって見えない幅
     static constexpr float kUiMarginX = 44.0f; // 横は板の3.4%
@@ -239,12 +242,10 @@ public:
     }
 
     // 板1マスが実際の画面で何ピクセルになるか
-    float UiScale() const {
-        return (std::min)((float)gfx_.clientWidth / kUiWidth, (float)gfx_.clientHeight / kUiHeight);
-    }
+    float UiScale() const { return UiFit().scale; }
     // 板の左上が実際の画面のどこに来るか（余った側の余白ぶん）
-    float UiOriginX() const { return ((float)gfx_.clientWidth - kUiWidth * UiScale()) * 0.5f; }
-    float UiOriginY() const { return ((float)gfx_.clientHeight - kUiHeight * UiScale()) * 0.5f; }
+    float UiOriginX() const { return UiFit().offsetX; }
+    float UiOriginY() const { return UiFit().offsetY; }
 
     // 板の上の座標を、実際の画面の座標へ移す（と、その逆）
     float UiToScreenX(float x) const { return UiOriginX() + x * UiScale(); }
@@ -254,13 +255,12 @@ public:
 
     // 3Dの点を板の上の座標へ。世界に貼りつく表示（頭の上の名前・その場に出す数字）に使う
     bool WorldToUi(const Vector3& world, const Matrix4x4& viewProjection, float& outX, float& outY) {
-        float screenX = 0.0f, screenY = 0.0f;
-        if (!WorldToScreen(world, viewProjection, (float)gfx_.clientWidth, (float)gfx_.clientHeight,
-                           screenX, screenY)) {
+        Vector2 screen{};
+        if (!WorldToScreen(world, viewProjection, (float)gfx_.clientWidth, (float)gfx_.clientHeight, screen)) {
             return false;
         }
-        outX = ScreenToUiX(screenX);
-        outY = ScreenToUiY(screenY);
+        outX = ScreenToUiX(screen.x);
+        outY = ScreenToUiY(screen.y);
         return true;
     }
 
@@ -286,7 +286,7 @@ public:
     void DrawTextCentered(float y, const std::string& utf8Text, float size = 24.0f,
                           const Vector4& color = Vector4{ 1.0f, 1.0f, 1.0f, 1.0f },
                           TextFace face = TextFace::Body) {
-        float x = (kUiWidth - MeasureTextWidth(utf8Text, size, face)) * 0.5f;
+        float x = (ScreenWidth() - MeasureTextWidth(utf8Text, size, face)) * 0.5f;
         DrawText(x, y, utf8Text, size, color, true, face);
     }
 
@@ -299,8 +299,8 @@ public:
 
     // 画面表示を組むときの板の大きさ。実際の画面のピクセル数ではない
     // （実際の大きさが要る場面はここには無い。あるとすれば、それは板の上で組めていない）
-    float ScreenWidth() const { return kUiWidth; }
-    float ScreenHeight() const { return kUiHeight; }
+    float ScreenWidth() const { return canvas2D_.width; }
+    float ScreenHeight() const { return canvas2D_.height; }
 
     // ===== 毎フレームの処理 =====
     //   engine.SetUpdateCallback([&](float deltaTime) { /* 毎フレームやりたい処理 */ });
@@ -497,7 +497,7 @@ public:
     // ========================================================================
     // 2Dの描画
     //
-    // 画面のピクセル（左上が原点・下がプラス）で描く。詳しくは Engine/Render/Draw2D.h。
+    // 1280x720の板の座標（左上が原点・下がプラス）で描く。詳しくは Engine/Graphics/Draw2D.h。
     //
     // 呼び方は「毎フレーム描く」形にしてある。シーンに物として置く形ではない。
     // 2Dのゲームは「今フレームの絵を上から順に積む」書き方が素直で、
@@ -538,12 +538,7 @@ public:
     // 線を引くパイプラインもあるが、そちらは太さを指定できない
     //（D3D12の線は必ず1px）ので、太い線が引けない
     void Line2D(float x0, float y0, float x1, float y1, float thickness, const Vector4& color) {
-        float dx = x1 - x0;
-        float dy = y1 - y0;
-        float length = sqrtf(dx * dx + dy * dy);
-        if (length < 0.0001f) { return; }
-        Push2D(Draw2DCommand::Kind::Quad, { (x0 + x1) * 0.5f, (y0 + y1) * 0.5f },
-               length, thickness, atan2f(dy, dx), color, true);
+        PushLine2D({ x0, y0 }, { x1, y1 }, thickness, color, true);
     }
 
     // ----- カメラを通さないもの（HUD） -----
@@ -724,16 +719,20 @@ public:
 #ifdef USE_IMGUI
         if (imguiInitialized_) { gfx_.WaitForGPU(); ShutdownImGui(); imguiInitialized_ = false; }
 #endif
-        sounds_.UnloadAll(audio_);
+        // 鳴っている音を全部止めてから、音のデータを解放する。
+        // 逆にすると、鳴っている途中の効果音が解放済みのデータを読みに行く
+        sounds_.StopMusic();
         audio_.Finalize();
+        sounds_.UnloadAll(audio_);
         input_->Finalize();
         delete input_;
         input_ = nullptr;
-        delete winApp_;
-        winApp_ = nullptr;
         text_.Finalize(); // GDIのフォントハンドルを解放する
         if (gfx_.fenceEvent) { CloseHandle(gfx_.fenceEvent); gfx_.fenceEvent = nullptr; }
-        CoUninitialize();
+        // COMの終了は最後（WIC・XAudio2などがCOMを使い終わってから）
+        winApp_->Finalize();
+        delete winApp_;
+        winApp_ = nullptr;
         initialized_ = false;
     }
 
@@ -756,8 +755,9 @@ private:
     Object3DPipeline pipeline_;
     LinePipeline linePipeline_;                               // 当たり判定の枠（線）の描画用
     ShadowPipeline shadowPipeline_;                           // 地面へ落とす影の描画用（半透明合成つき）
-    // 1フレームで描ける2Dの四角・円・絵の枚数（Rect2D / HudRect2D / Sprite2D …）
-    static constexpr int kMaxDraw2DRects = 512;
+    // 1フレームに積める・描ける2Dの四角・円・絵の枚数（Rect2D / HudRect2D / Sprite2D …）。
+    // 積む上限と描く上限（定数バッファの数）を同じ値にしておく。食い違うと、積めたのに描かれない物が黙って出る
+    static constexpr int kMaxDraw2D = 1024;
     std::vector<LineTransformBuffer> draw2DTransformBuffers_;
     int draw2DDrawCount_ = 0;                                 // このフレームで何枚描いたか
     LineBoxMesh lineBoxMesh_;                                 // ユニットボックスの線
@@ -776,7 +776,6 @@ private:
     Canvas2D canvas2D_;                                       // 2Dの論理解像度
     Camera2D camera2D_;                                       // 2Dのカメラ（見る場所・寄り・揺れ）
     std::vector<Draw2DCommand> draw2DCommands_;               // このフレームに積まれた2Dの描画
-    static constexpr size_t kMaxDraw2DCommands = 4096;        // 積める上限（描き過ぎで固まらないように）
     LineBoxMesh shadowQuadMesh_;                              // 影1つぶんの板（XZ平面の四角形）
     static constexpr int kMaxShadows = 128;                   // 同時に描ける影の数
     std::vector<LineTransformBuffer> shadowTransformBuffers_;
@@ -959,17 +958,8 @@ private:
 
     // レイで一番手前の物を選ぶ（見えていないもの・スプライトは選ばない）
     uint32_t PickObject(const Vector3& rayOrigin, const Vector3& rayDir) {
-        uint32_t best = 0;
-        float bestDistance = (std::numeric_limits<float>::max)();
-        for (const Object3D& obj : objects_) {
-            if (!obj.visible || obj.isSprite) { continue; }
-            float distance = 0.0f;
-            if (RayIntersectOBB(rayOrigin, rayDir, obj.GetWorldOBB(), distance) && distance < bestDistance) {
-                bestDistance = distance;
-                best = obj.id;
-            }
-        }
-        return best;
+        Object3D* hit = Raycast(rayOrigin, rayDir, (std::numeric_limits<float>::max)()).object;
+        return hit ? hit->id : 0;
     }
 
     // 画面上で一定の長さに見えるよう、ギズモの長さ（ワールドの長さ）を決める
@@ -979,7 +969,7 @@ private:
         }
         Vector3 eye = debugCamera_.GetPosition();
         Vector3 toCenter{ center.x - eye.x, center.y - eye.y, center.z - eye.z };
-        float depth = (std::max)(0.1f, Gizmo::Dot(toCenter, debugCamera_.Forward()));
+        float depth = (std::max)(0.1f, Dot(toCenter, debugCamera_.Forward()));
         return depth * tanf(debugCamera_.GetFovY() * 0.5f) * 2.0f * kGizmoScreenRatio;
     }
 
@@ -999,9 +989,9 @@ private:
                 Vector2 prev{};
                 bool prevValid = false;
                 for (int i = 0; i <= kSamples; ++i) {
-                    float angle = 6.28318530718f * (float)i / (float)kSamples;
+                    float angle = kTwoPi * (float)i / (float)kSamples;
                     Vector2 screen{};
-                    bool valid = Gizmo::ProjectToScreen(Gizmo::PointOnRing(center, a, length, angle), vp, width, height, screen);
+                    bool valid = WorldToScreen(Gizmo::PointOnRing(center, a, length, angle), vp, width, height, screen);
                     if (valid && prevValid) {
                         float d = Gizmo::DistancePointToSegment(mouse, prev, screen);
                         if (d < bestDistance) { bestDistance = d; bestAxis = a; }
@@ -1014,10 +1004,10 @@ private:
         }
 
         Vector2 origin{};
-        if (!Gizmo::ProjectToScreen(center, vp, width, height, origin)) { return -1; }
+        if (!WorldToScreen(center, vp, width, height, origin)) { return -1; }
         for (int a = 0; a < 3; ++a) {
             Vector2 tip{};
-            if (!Gizmo::ProjectToScreen(Gizmo::AddScaled(center, Gizmo::kAxis[a], length), vp, width, height, tip)) { continue; }
+            if (!WorldToScreen(AddScaled(center, Gizmo::kAxis[a], length), vp, width, height, tip)) { continue; }
             float d = Gizmo::DistancePointToSegment(mouse, origin, tip);
             if (d < bestDistance) { bestDistance = d; bestAxis = a; }
         }
@@ -1054,7 +1044,7 @@ private:
         switch (gizmoTool_) {
         case GizmoTool::Move: {
             float delta = Gizmo::ClosestTOnAxis(dragStartTranslate_, dir, rayOrigin, rayDir) - dragStartT_;
-            Vector3 moved = Gizmo::AddScaled(dragStartTranslate_, dir, delta);
+            Vector3 moved = AddScaled(dragStartTranslate_, dir, delta);
             if (snap) { AxisComponent(moved, axis) = Gizmo::SnapTo(AxisComponent(moved, axis), kSnapMove); }
             obj.transform.translate = moved;
             break;
@@ -1069,7 +1059,6 @@ private:
             Vector3 rotated = dragStartRotate_;
             AxisComponent(rotated, axis) += dragAccumAngle_;
             if (snap) {
-                constexpr float kDegToRad = 3.14159265359f / 180.0f;
                 AxisComponent(rotated, axis) = Gizmo::SnapTo(AxisComponent(rotated, axis), kSnapRotateDegrees * kDegToRad);
             }
             // 姿勢の実体はクォータニオンだが、物理は再開したときにオイラー角の変化を取り込む
@@ -1102,35 +1091,29 @@ private:
     // 選んだ物が画面に収まる距離へ寄る。向きは変えない（見ていた角度が変わると迷子になる）
     void FocusDebugCamera(const Object3D& obj) {
         OBB obb = obj.GetWorldOBB();
-        float radius = sqrtf(Gizmo::Dot(obb.halfSize, obb.halfSize));
+        float radius = sqrtf(Dot(obb.halfSize, obb.halfSize));
         float distance = (std::max)(2.0f, radius * 3.0f);
         Vector3 forward = debugCamera_.Forward();
-        debugCamera_.SetPosition(Gizmo::AddScaled(obb.center, forward, -distance));
+        debugCamera_.SetPosition(AddScaled(obb.center, forward, -distance));
     }
 
     // ----- 目印を積む（2DのHUDとして、3Dの上に出る）-----
 
-    Vector2 PixelToCanvas(const Vector2& pixel, const Canvas2D::Fit& fit) const {
-        return { (pixel.x - fit.offsetX) / fit.scale, (pixel.y - fit.offsetY) / fit.scale };
-    }
+    // 板（Canvas2D）と実際の窓の対応。文字・2D・スプライトはすべてこれを通す
+    Canvas2D::Fit UiFit() const { return canvas2D_.MakeFit((float)gfx_.clientWidth, (float)gfx_.clientHeight); }
 
     void HudLine(const Vector2& a, const Vector2& b, float thickness, const Vector4& color) {
-        float dx = b.x - a.x, dy = b.y - a.y;
-        float length = sqrtf(dx * dx + dy * dy);
-        if (length < 0.001f) { return; }
-        Push2D(Draw2DCommand::Kind::Quad, { (a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f }, length, thickness,
-               atan2f(dy, dx), color, false);
+        PushLine2D(a, b, thickness, color, false);
     }
 
     void DrawDebugView() {
-        const Canvas2D::Fit fit = canvas2D_.MakeFit((float)gfx_.clientWidth, (float)gfx_.clientHeight);
         const Matrix4x4 vp = debugCamera_.GetViewProjectionMatrix();
         const float width = (float)gfx_.clientWidth;
         const float height = (float)gfx_.clientHeight;
         auto Project = [&](const Vector3& world, Vector2& outCanvas) {
             Vector2 pixel{};
-            if (!Gizmo::ProjectToScreen(world, vp, width, height, pixel)) { return false; }
-            outCanvas = PixelToCanvas(pixel, fit);
+            if (!WorldToScreen(world, vp, width, height, pixel)) { return false; }
+            outCanvas = { ScreenToUiX(pixel.x), ScreenToUiY(pixel.y) };
             return true;
         };
 
@@ -1150,9 +1133,9 @@ private:
             for (int i = 0; i < 8; ++i) {
                 float sx = (i & 1) ? 1.0f : -1.0f, sy = (i & 2) ? 1.0f : -1.0f, sz = (i & 4) ? 1.0f : -1.0f;
                 Vector3 c = obb.center;
-                c = Gizmo::AddScaled(c, obb.axis[0], sx * obb.halfSize.x);
-                c = Gizmo::AddScaled(c, obb.axis[1], sy * obb.halfSize.y);
-                c = Gizmo::AddScaled(c, obb.axis[2], sz * obb.halfSize.z);
+                c = AddScaled(c, obb.axis[0], sx * obb.halfSize.x);
+                c = AddScaled(c, obb.axis[1], sy * obb.halfSize.y);
+                c = AddScaled(c, obb.axis[2], sz * obb.halfSize.z);
                 corners[i] = c;
             }
             static constexpr int kEdges[12][2] = {
@@ -1181,7 +1164,7 @@ private:
                     Vector2 prev{};
                     bool prevValid = false;
                     for (int i = 0; i <= kSegments; ++i) {
-                        float angle = 6.28318530718f * (float)i / (float)kSegments;
+                        float angle = kTwoPi * (float)i / (float)kSegments;
                         Vector2 p{};
                         bool valid = Project(Gizmo::PointOnRing(center, a, length, angle), p);
                         if (valid && prevValid) { HudLine(prev, p, 2.5f, color); }
@@ -1197,7 +1180,7 @@ private:
                     armLength *= AxisComponent(selected->transform.scale, a) / AxisComponent(dragStartScale_, a);
                 }
                 Vector2 tip{};
-                if (!Project(Gizmo::AddScaled(center, Gizmo::kAxis[a], armLength), tip)) { continue; }
+                if (!Project(AddScaled(center, Gizmo::kAxis[a], armLength), tip)) { continue; }
                 float dx = tip.x - origin.x, dy = tip.y - origin.y;
                 float screenLength = sqrtf(dx * dx + dy * dy);
                 HudLine(origin, tip, 3.0f, color);
@@ -1229,9 +1212,8 @@ private:
         DrawText(x, y, "左クリック：選ぶ　右ドラッグ＋WASD/QE：視点　F：寄る　Ctrl：刻む", 16.0f, kDim);
 
         if (selected) {
-            constexpr float kRadToDeg = 57.2957795f;
             const Transform& tr = selected->transform;
-            float by = kUiHeight - kUiMarginY - UiLine(18.0f) * 4.0f;
+            float by = ScreenHeight() - kUiMarginY - UiLine(18.0f) * 4.0f;
             DrawText(x, by, selected->name + (selected->tag.empty() ? "" : "  [" + selected->tag + "]") +
                             "  id " + std::to_string(selected->id), 20.0f, kTitle);
             by += UiLine(18.0f) * 1.1f;
@@ -1298,18 +1280,7 @@ private:
         self->components.Collide(ctx, hit);
     }
 
-    // IDから今の配列位置を引く。見つからなければ-1
-    int IndexOfObjectId(uint32_t id) const {
-        if (id == 0) { return -1; }
-        for (int i = 0; i < (int)objects_.size(); ++i) {
-            if (objects_[i].id == id) { return i; }
-        }
-        return -1;
-    }
-    Object3D* FindObjectById(uint32_t id) {
-        int index = IndexOfObjectId(id);
-        return (index >= 0) ? &objects_[index] : nullptr;
-    }
+    Object3D* FindObjectById(uint32_t id) { return ::FindObjectById(objects_, id); }
 
     // 画面のピクセル位置を通る、カメラからのレイ（ワールド空間）
     bool ComputeMouseRay(POINT pt, Vector3& outOrigin, Vector3& outDir) {
@@ -1372,7 +1343,6 @@ private:
         size_t slash = key.find_last_of('/');
         std::string displayName = (slash == std::string::npos) ? key : key.substr(slash + 1);
         objects_.push_back(CreateObject3DFromCachedModel(gfx_.device.Get(), it->second, displayName));
-        objects_.back().sourceModel = key; // どのファイルの部品から来たか
         return objects_.back().id;
     }
 
@@ -1413,7 +1383,15 @@ private:
         RestoreObjectPipeline();
 
         Matrix4x4 cameraVP = ViewCamera().GetViewProjectionMatrix(); // デバッグビュー中はデバッグ用カメラから見る
-        Matrix4x4 spriteVP = MakeOrthographicMatrix(0.0f, 0.0f, (float)gfx_.clientWidth, (float)gfx_.clientHeight, 0.0f, 100.0f);
+        // スプライトは文字や2Dの描画と同じ「板の上の座標」で置く。
+        // 実際の画面のピクセルで映すと、解像度が変わるたびに位置と大きさがずれる。
+        // 板の外（レターボックスの帯）まで映るよう、窓全体を板の座標で表した範囲を映す
+        const float uiScale = UiScale(); // MakeFitが窓の大きさを1以上に丸めるので0にはならない
+        const float spriteLeft = -UiOriginX() / uiScale;
+        const float spriteTop = -UiOriginY() / uiScale;
+        Matrix4x4 spriteVP = MakeOrthographicMatrix(spriteLeft, spriteTop,
+                                                    spriteLeft + (float)gfx_.clientWidth / uiScale,
+                                                    spriteTop + (float)gfx_.clientHeight / uiScale, 0.0f, 100.0f);
 
         // 2Dの四角の枚数は、フレームの頭で数え直す
         draw2DDrawCount_ = 0;
@@ -1800,16 +1778,25 @@ private:
         if (color.w <= 0.001f) { return; }
         // 積みすぎを止める。上限を超えたぶんを捨てるのは、
         // 何も描かなくなるより「一部が出ない」方が原因を追いやすいため
-        if (draw2DCommands_.size() >= kMaxDraw2DCommands) { return; }
+        if (draw2DCommands_.size() >= (size_t)kMaxDraw2D) { return; }
         Draw2DCommand command{ kind, position, width, height, rotation, color, throughCamera };
         draw2DCommands_.push_back(command);
+    }
+
+    // 線は細長い四角を、線の向きへ傾けて置く（D3D12の線は太さを指定できないため）
+    void PushLine2D(const Vector2& a, const Vector2& b, float thickness, const Vector4& color, bool throughCamera) {
+        float dx = b.x - a.x, dy = b.y - a.y;
+        float length = sqrtf(dx * dx + dy * dy);
+        if (length < 0.0001f) { return; }
+        Push2D(Draw2DCommand::Kind::Quad, { (a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f }, length, thickness,
+               atan2f(dy, dx), color, throughCamera);
     }
 
     void PushSprite2D(const Loaded2DTexture* texture, const Vector2& position,
                       float width, float height, float rotation, const Vector4& color,
                       bool throughCamera) {
         if (color.w <= 0.001f || !texture) { return; }
-        if (draw2DCommands_.size() >= kMaxDraw2DCommands) { return; }
+        if (draw2DCommands_.size() >= (size_t)kMaxDraw2D) { return; }
         Draw2DCommand command{ Draw2DCommand::Kind::Quad, position, width, height,
                                rotation, color, throughCamera };
         command.texture = texture->srv;
@@ -1824,7 +1811,7 @@ private:
         gfx_.commandList->SetPipelineState(draw2DPipeline_.pso.Get());
         gfx_.commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        Canvas2D::Fit fit = canvas2D_.MakeFit((float)gfx_.clientWidth, (float)gfx_.clientHeight);
+        Canvas2D::Fit fit = UiFit();
         float aspect = (gfx_.clientHeight > 0)
             ? ((float)gfx_.clientWidth / (float)gfx_.clientHeight) : 1.0f;
 
@@ -1884,7 +1871,7 @@ private:
     // 各オブジェクトのコライダーをワイヤーフレームで描画する（Unityのギズモ風）
     //   ・ボックスコライダー（OBB）：useBoxCollider が true のオブジェクトのみ、ユニットボックスを変形して描画
     //   ・メッシュコライダー：useMeshCollider が true のオブジェクトのみ、実際の三角形の辺に沿って描画
-    // 衝突していれば赤、していなければ緑（メッシュコライダーはUpdatePhysicsで求めた実際の衝突結果を使う）
+    // 衝突していれば赤、していなければ緑（メッシュコライダーはPhysicsWorld::Stepで求めた実際の衝突結果を使う）
     void DrawColliders(const Matrix4x4& cameraVP, const Matrix4x4& spriteVP) {
         gfx_.commandList->SetGraphicsRootSignature(linePipeline_.rootSignature.Get());
         gfx_.commandList->SetPipelineState(linePipeline_.pso.Get());
@@ -1901,9 +1888,9 @@ private:
 
         std::vector<bool> isColliding(objects_.size(), false);
         for (size_t i = 0; i < worldOBBs.size(); ++i) {
-            if (!objects_[i].useBoxCollider) { continue; }
+            if (!objects_[i].useBoxCollider || objects_[i].isSprite) { continue; }
             for (size_t j = i + 1; j < worldOBBs.size(); ++j) {
-                if (!objects_[j].useBoxCollider) { continue; }
+                if (!objects_[j].useBoxCollider || objects_[j].isSprite) { continue; }
                 if (Intersect(worldOBBs[i], worldOBBs[j])) {
                     isColliding[i] = true;
                     isColliding[j] = true;

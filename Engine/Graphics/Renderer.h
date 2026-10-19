@@ -37,10 +37,10 @@ struct GraphicsContext {
     ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap;
     UINT descriptorSizeSRV = 0;
     // SRVヒープに置ける枚数。テクスチャ付きモデルを読むたびに1枚ずつ使うので、
-    // 上限を超えていないかを使う側（GetOrLoadCachedModel）が必ず確かめること。
+    // 上限を超えていないかを使う側（GetOrLoadCachedModelKeys など）が必ず確かめること。
     // 超えたまま書き込むとヒープの外を触ることになり、原因の分かりにくい描画崩れ・強制終了になる
     static constexpr UINT kSrvDescriptorCount = 128;
-    UINT nextSrvIndex = 4; // 0:空き, 1:uvChecker, 2:changeResource, 3:白で使用済み。次に空くのは4番目から
+    UINT nextSrvIndex = 3; // 0:ImGuiのフォント（Debugのみ）, 1:uvChecker, 2:白で使用済み。次に空くのは3番目から
 
     ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap;
     ComPtr<ID3D12Resource> depthStencilResource;
@@ -629,12 +629,10 @@ inline LineTransformBuffer CreateLineTransformBuffer(ID3D12Device* device) {
     return buffer;
 }
 
-// ===== 標準で使えるテクスチャ（uvChecker/changeResource）をSRVスロット1,2に読み込んでおく =====
+// ===== 標準で使えるテクスチャ（uvChecker/白）をSRVスロット1,2に読み込んでおく =====
 struct DefaultTextures {
     ComPtr<ID3D12Resource> uvCheckerResource;
     D3D12_GPU_DESCRIPTOR_HANDLE uvCheckerSrv{};
-    ComPtr<ID3D12Resource> changeResourceResource;
-    D3D12_GPU_DESCRIPTOR_HANDLE changeResourceSrv{};
     // 真っ白な1枚。これを貼ると、材質の色がそのまま出る
     ComPtr<ID3D12Resource> whiteResource;
     D3D12_GPU_DESCRIPTOR_HANDLE whiteSrv{};
@@ -663,11 +661,8 @@ inline DefaultTextures LoadDefaultTextures(GraphicsContext& gfx) {
     textures.uvCheckerSrv = LoadTextureToSRV(
         gfx.device.Get(), gfx.commandList.Get(), gfx.srvDescriptorHeap.Get(), gfx.descriptorSizeSRV, 1,
         "resources/uvChecker.png", textures.uvCheckerResource, intermediateResources);
-    textures.changeResourceSrv = LoadTextureToSRV(
-        gfx.device.Get(), gfx.commandList.Get(), gfx.srvDescriptorHeap.Get(), gfx.descriptorSizeSRV, 2,
-        "resources/changeResource.png", textures.changeResourceResource, intermediateResources);
     textures.whiteSrv = CreateTextureSRV(
-        gfx.device.Get(), gfx.commandList.Get(), gfx.srvDescriptorHeap.Get(), gfx.descriptorSizeSRV, 3,
+        gfx.device.Get(), gfx.commandList.Get(), gfx.srvDescriptorHeap.Get(), gfx.descriptorSizeSRV, 2,
         CreateWhiteImage(), textures.whiteResource, intermediateResources);
 
     // このままではアップロード用中間リソースがGPU転送完了前に破棄されうるので、コマンドを実行してGPU完了を待つ
@@ -768,7 +763,7 @@ inline Draw2DMesh CreateDraw2DCircleMesh(ID3D12Device* device, int segments = 32
     vertices.reserve((size_t)segments + 1);
     vertices.push_back({ { 0.0f, 0.0f, 0.0f }, { 0.5f, 0.5f } }); // 中心
     for (int i = 0; i < segments; ++i) {
-        float angle = 6.28318530718f * (float)i / (float)segments;
+        float angle = kTwoPi * (float)i / (float)segments;
         float x = cosf(angle) * 0.5f;
         float y = sinf(angle) * 0.5f;
         // UVも同じ形に置く。円に絵を貼りたくなったときに、そのまま丸く抜ける
@@ -939,30 +934,11 @@ inline void DrawObject(ID3D12GraphicsCommandList* commandList, const Object3D& o
     // 貼るものが無い物は白い1枚。uvChecker.pngはUVの並びを確かめるための格子模様なので、
     // ゲームに出す物に貼ったままだと、画面じゅうが虹色の格子と座標の数字で埋まる
     D3D12_GPU_DESCRIPTOR_HANDLE srv = obj.hasOwnTexture ? obj.textureSrvHandleGPU
-        : (obj.untextured ? textures.whiteSrv
-        : (obj.useChangeTexture ? textures.changeResourceSrv : textures.uvCheckerSrv));
+        : (obj.untextured ? textures.whiteSrv : textures.uvCheckerSrv);
     commandList->SetGraphicsRootDescriptorTable(2, srv);
     commandList->DrawIndexedInstanced(obj.indexCount, 1, 0, 0, 0);
 }
 
-// スクリーン上のNDC座標(ndcX, ndcY: -1〜1)＋深度(ndcZ: 0〜1、0が近平面/1が遠平面)を、
-
-// ワールド座標が画面のどこに映るかを求める（ピクセル単位。左上が0,0）。
-// カメラの後ろにある点は画面に出しようがないのでfalseを返す。
-//
-// 判定を省いてそのまま割ると、後ろにある物が符号の反転した位置に「もう1つ」現れる。
-// 振り返った瞬間に、見えないはずの数字が画面の反対側に出るという妙な出方をする
-inline bool WorldToScreen(const Vector3& world, const Matrix4x4& viewProjection,
-                          float screenWidth, float screenHeight, float& outX, float& outY) {
-    float x = world.x * viewProjection.m[0][0] + world.y * viewProjection.m[1][0] + world.z * viewProjection.m[2][0] + viewProjection.m[3][0];
-    float y = world.x * viewProjection.m[0][1] + world.y * viewProjection.m[1][1] + world.z * viewProjection.m[2][1] + viewProjection.m[3][1];
-    float w = world.x * viewProjection.m[0][3] + world.y * viewProjection.m[1][3] + world.z * viewProjection.m[2][3] + viewProjection.m[3][3];
-    if (w <= 1e-5f) { return false; }
-
-    outX = (x / w * 0.5f + 0.5f) * screenWidth;
-    outY = (0.5f - y / w * 0.5f) * screenHeight; // 画面のYは下向きなので上下を入れ替える
-    return true;
-}
 // ViewProjectionの逆行列でワールド空間の点へ戻す（マウスピッキングでレイを作るために使う）
 // 他の変換と同じ「行ベクトル×行列」の規約（v * M）に合わせている
 inline Vector3 UnprojectNDCToWorld(float ndcX, float ndcY, float ndcZ, const Matrix4x4& invViewProjection) {

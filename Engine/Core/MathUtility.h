@@ -9,6 +9,34 @@ struct Vector4 { float x, y, z, w; };
 struct Matrix4x4 { float m[4][4]; };
 struct Transform { Vector3 scale; Vector3 rotate; Vector3 translate; };
 
+// ===== 円周率と角度の変換 =====
+inline constexpr float kPi = 3.14159265358979f;
+inline constexpr float kTwoPi = kPi * 2.0f;
+inline constexpr float kDegToRad = kPi / 180.0f;
+inline constexpr float kRadToDeg = 180.0f / kPi;
+
+// ===== Vector3の計算 =====
+// 物理・当たり判定・ギズモ・カメラのどこでも使うので、ここに1つだけ置く
+inline Vector3 Add(const Vector3& a, const Vector3& b) { return { a.x + b.x, a.y + b.y, a.z + b.z }; }
+inline Vector3 Sub(const Vector3& a, const Vector3& b) { return { a.x - b.x, a.y - b.y, a.z - b.z }; }
+inline Vector3 Scale(const Vector3& v, float s) { return { v.x * s, v.y * s, v.z * s }; }
+// p + dir * s（ある点から、ある向きへ s だけ進んだ点）
+inline Vector3 AddScaled(const Vector3& p, const Vector3& dir, float s) {
+    return { p.x + dir.x * s, p.y + dir.y * s, p.z + dir.z * s };
+}
+inline float Dot(const Vector3& a, const Vector3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+inline Vector3 Cross(const Vector3& a, const Vector3& b) {
+    return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
+}
+inline float LengthSq(const Vector3& v) { return Dot(v, v); }
+inline float Length(const Vector3& v) { return std::sqrt(Dot(v, v)); }
+// 長さ1にする。長さがほぼ0で向きが決まらないときは fallback を返す
+inline Vector3 Normalize(const Vector3& v, const Vector3& fallback = { 0.0f, 1.0f, 0.0f }) {
+    float lenSq = LengthSq(v);
+    if (lenSq < 1e-12f) { return fallback; }
+    return Scale(v, 1.0f / std::sqrt(lenSq));
+}
+
 // 単位行列の作成
 inline Matrix4x4 MakeIdentity4x4() {
     Matrix4x4 mat{};
@@ -138,4 +166,22 @@ inline Vector3 TransformPoint(const Vector3& p, const Matrix4x4& m) {
         p.x * m.m[0][1] + p.y * m.m[1][1] + p.z * m.m[2][1] + m.m[3][1],
         p.x * m.m[0][2] + p.y * m.m[1][2] + p.z * m.m[2][2] + m.m[3][2],
     };
+}
+
+// ワールド座標が画面のどこに映るかを求める（ピクセル単位。左上が0,0）。
+// カメラの後ろにある点は画面に出しようがないのでfalseを返す。
+//
+// 判定を省いてそのまま割ると、後ろにある物が符号の反転した位置に「もう1つ」現れる。
+// 振り返った瞬間に、見えないはずの数字が画面の反対側に出るという妙な出方をする
+inline bool WorldToScreen(const Vector3& world, const Matrix4x4& viewProjection,
+                          float screenWidth, float screenHeight, Vector2& out) {
+    const Matrix4x4& m = viewProjection;
+    float x = world.x * m.m[0][0] + world.y * m.m[1][0] + world.z * m.m[2][0] + m.m[3][0];
+    float y = world.x * m.m[0][1] + world.y * m.m[1][1] + world.z * m.m[2][1] + m.m[3][1];
+    float w = world.x * m.m[0][3] + world.y * m.m[1][3] + world.z * m.m[2][3] + m.m[3][3];
+    if (w <= 1e-5f) { return false; }
+
+    out.x = (x / w * 0.5f + 0.5f) * screenWidth;
+    out.y = (0.5f - y / w * 0.5f) * screenHeight; // 画面のYは下向きなので上下を入れ替える
+    return true;
 }

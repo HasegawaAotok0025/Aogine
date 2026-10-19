@@ -94,7 +94,7 @@ public:
     void PlayMusic(const std::string& name) {
         if (audio_ == nullptr) { return; }
         if (musicName_ == name && musicVoice_.IsValid()) {
-            musicVoice_.SetVolume(muted ? 0.0f : musicVolume * masterVolume);
+            ApplyVolumes();
             return;
         }
         StopMusic();
@@ -131,35 +131,6 @@ public:
 
     bool Has(const std::string& name) const { return entries_.find(name) != entries_.end(); }
     const std::string& PlayingMusic() const { return musicName_; }
-
-    // 登録されている名前を並べて返す
-    std::vector<std::string> Names() const {
-        std::vector<std::string> names;
-        names.reserve(entries_.size());
-        for (const auto& [name, entry] : entries_) { names.push_back(name); }
-        return names;
-    }
-
-    int RegisteredCount() const { return (int)entries_.size(); }
-    int LoadedCount() const {
-        int n = 0;
-        for (const auto& [name, entry] : entries_) { if (entry.loaded) { ++n; } }
-        return n;
-    }
-
-    // 音ごとの音量（無い名前ならnullptr）
-    float* VolumeScaleOf(const std::string& name) {
-        Entry* entry = Find(name);
-        return entry ? &entry->volumeScale : nullptr;
-    }
-    const std::string* FilePathOf(const std::string& name) {
-        Entry* entry = Find(name);
-        return entry ? &entry->filePath : nullptr;
-    }
-    bool IsLoaded(const std::string& name) {
-        Entry* entry = Find(name);
-        return entry && entry->loaded;
-    }
 
 private:
     struct Entry {

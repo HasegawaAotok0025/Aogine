@@ -22,8 +22,7 @@ public:
     float degreesPerSecond = 90.0f;
 
     void OnUpdate(ComponentContext& ctx) override {
-        const float kTwoPi = 6.28318530718f;
-        float radians = degreesPerSecond * 0.01745329252f * ctx.deltaTime;
+        float radians = degreesPerSecond * kDegToRad * ctx.deltaTime;
         Vector3& rotate = ctx.self.transform.rotate;
         rotate.x = Wrap(rotate.x + axis.x * radians, kTwoPi);
         rotate.y = Wrap(rotate.y + axis.y * radians, kTwoPi);
@@ -57,7 +56,7 @@ public:
         }
 
         elapsed_ += ctx.deltaTime;
-        float wave = sinf((elapsed_ * cyclesPerSecond + phase) * 6.28318530718f) * amplitude;
+        float wave = sinf((elapsed_ * cyclesPerSecond + phase) * kTwoPi) * amplitude;
         translate = {
             basePosition_.x + direction.x * wave,
             basePosition_.y + direction.y * wave,

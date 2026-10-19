@@ -8,7 +8,7 @@
 // ============================================================================
 // シーンに置く「1つのオブジェクト」を表すデータ型と、その生成関数をまとめたファイル。
 // Object3Dは見た目（頂点/マテリアル/テクスチャ）と当たり判定・物理の設定を1つに束ねたもので、
-// エンジン・ステージ・物理・プレイヤーのどこからも共通して扱う中心的なデータになる。
+// 描画・物理・部品（コンポーネント）・ゲームのコードのどこからも共通して扱う中心的なデータになる。
 // ============================================================================
 
 // UVTransform用のTranslate/Rotate/Scale（見た目上はSRTだが2D用途なのでZ成分はほぼ使わない）
@@ -18,9 +18,6 @@ struct UVTransform {
     Vector3 translate = { 0.0f, 0.0f, 0.0f };
 };
 
-// 複数モデル描画対応：Sprite/Sphere/objモデルを問わず1つの描画対象として扱う汎用オブジェクト
-// リソースはすべてComPtrで持つため、Object3Dが破棄される（vectorからeraseされる/スコープを抜ける）と
-// 自動的にGPUリソースが解放される。明示的なRelease()は不要。
 // 動くオブジェクト側の当たり判定形状（静止メッシュコライダーと衝突する際にどちらのアルゴリズムを使うか決める）
 enum class ColliderShape { Box, Sphere };
 
@@ -49,19 +46,14 @@ inline uint32_t NextObjectId() {
     return ++counter; // 0は「無効」の意味に取っておく
 }
 
-// このオブジェクトが何から作られたか。シーンをファイルへ保存して読み直すとき、
-// 同じ物をもう一度作るために「元が何だったか」が要る。
-// 頂点データを見て後から当てることはできない（立方体と読み込んだモデルの区別がつかない）ので、
-// 作った時点で控えておく
-enum class ObjectSource { Sprite, Sphere, Cube, Model };
-
+// Sprite/Sphere/Cube/objモデルを問わず1つの描画対象として扱う汎用オブジェクト。
+// リソースはすべてComPtrで持つため、Object3Dが破棄される（vectorからeraseされる/スコープを抜ける）と
+// 自動的にGPUリソースが解放される。明示的なRelease()は不要。
 struct Object3D {
     // 生成時に配られる一意な番号（0は無効）。Object3Dをコピーすると番号も複製されてしまうが、
     // 生成関数を通す限り1オブジェクト＝1番号になる
     uint32_t id = 0;
 
-    ObjectSource source = ObjectSource::Cube;
-    std::string sourceModel; // source==Modelのとき "resources/SuzannuObj/suzannu.obj" の形式で入る
     std::string name;               // 名前（ログやFindで使う）
 
     // 種類を表す短い名前（Unityの Tag と同じ考え方）。"Player" "Goal" "Ground" など。
@@ -123,7 +115,7 @@ struct Object3D {
     // 真上に投げた物が放物線の頂点（速度が一瞬0になる）で静止扱いされてしまう
     float sleepTimer = 0.0f;
 
-    // このフレーム、ほぼ真上向きの法線を持つ相手（床など）に接地しているか。UpdatePhysicsが衝突解決のたびに更新する。
+    // このフレーム、ほぼ真上向きの法線を持つ相手（床など）に接地しているか。PhysicsWorld::Stepが接触を集めるたびに更新する。
     // ジャンプ操作などで「地面に着いているか」を厳密に判定するために使う（速度がほぼ0、という曖昧な判定だと
     // ジャンプの頂点付近でも条件を満たしてしまい、空中で連続ジャンプできてしまうため）
     bool isGrounded = false;
@@ -140,11 +132,11 @@ struct Object3D {
     // 押し返さないので、通り抜けながら判定できる
     bool isTrigger = false;
 
-    // ===== メッシュコライダー（静止オブジェクト側で使う。Unityと同じくメッシュコライダーは静止専用） =====
-    // trueにすると、isStatic前提でこのオブジェクトの実メッシュ（三角形単位）を衝突相手として使う
-    // （Sphereコライダーを持つ動くオブジェクトのみ対応。Boxコライダー同士は従来通りOBBで判定する）
-    // 判定は毎フレーム全三角形を総当たりすると重いため、まずOBB（ボックスコライダー）でおおまかに判定し、
-    // 「当たる可能性がある」ときだけ三角形単位の精密な判定に進む（Engine::UpdatePhysics参照）
+    // ===== メッシュコライダー（実際の三角形で当たりを取る） =====
+    // trueにすると、このオブジェクトの実メッシュ（三角形単位）を衝突の形として使う。主に地面などの静止物向け。
+    // 相手（動く側）が球コライダーなら球と三角形で、そうでなければ相手の頂点と三角形で判定する
+    // （両方がメッシュコライダーなら、動く側の頂点を相手の三角形へ当てる。スザンヌ対スザンヌなど）。
+    // 全三角形の総当たりは重いので、まずOBBでおおまかに判定し、当たりそうなときだけ三角形まで見る（PhysicsWorld::Step）
     bool useMeshCollider = false;
     std::vector<Vector3> localPositions;   // メッシュコライダー用のローカル頂点位置
     std::vector<uint32_t> triangleIndices; // メッシュコライダー用の三角形インデックス
@@ -231,16 +223,15 @@ struct Object3D {
     // 色の合成方法。kNone以外にすると、materialData->color.w（α）が効くようになる。
     // 半透明の物は奥行きを書き込まず、不透明な物を描いたあとに遠い順で描かれる
     BlendMode blendMode = BlendMode::kNone;
-    bool useChangeTexture = false; // false:uvChecker.png / true:changeResource.png（Sprite/Sphere用の簡易切り替え）
     // テクスチャを貼らず、下のcolorだけで描くか。
-    // 作る物（ステージのブロック・キャラクター・仕掛け）はこちら側で、
+    // ゲームに出す物（ブロック・キャラクター・仕掛け）はこちら側で、
     // uvChecker.pngはUVの並びを確かめるための格子模様なので、貼ったままだと
     // 画面じゅうが虹色の格子と座標の数字で埋まる。
     // 格子を見たいときだけ false にする
     bool untextured = true;
 
     // objファイルから読み込んだモデル専用のテクスチャ（mtlのmap_Kdから読み込む）。
-    // 持っている場合はuseChangeTextureの2択ではなく、こちらを優先して使用する
+    // 持っている場合は、untexturedの指定より優先して使用する
     bool hasOwnTexture = false;
     ComPtr<ID3D12Resource> textureResource;
     D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU{};
@@ -253,7 +244,7 @@ struct Object3D {
     // そういうものは部品にして、必要な物にだけ挿す。詳しくはEngine/Component/Component.h。
     //
     // コピーすると中身まで複製される（面倒はComponentListが見ている）ので、
-    // Ctrl+Dの複製もvectorの入れ替えも、今まで通りに書ける
+    // Object3Dの複製もvectorの入れ替えも、今まで通りに書ける
     ComponentList components;
 
     // 部品を付ける／探す短縮形。components.Add<T>() と同じだが、
@@ -281,21 +272,20 @@ struct Object3D {
 static_assert(std::is_nothrow_move_constructible_v<Object3D>,
               "Object3Dへ、ムーブがnoexceptでないメンバが入りました。"
               "vectorの引っ越しがコピーになり、遅くなるうえ部品の番地が変わります");
+// idから今の配列上のオブジェクトを引く（見つからなければnullptr）。
+// エンジンも物理も、フレームをまたいで同じ物を指すときはこれで引き直す
+inline Object3D* FindObjectById(std::vector<Object3D>& objects, uint32_t id) {
+    if (id == 0) { return nullptr; }
+    for (Object3D& obj : objects) { if (obj.id == id) { return &obj; } }
+    return nullptr;
+}
+
 // Object3Dとして配置できる基本形状の種類
 enum class PrimitiveKind { Sprite, Sphere, Cube };
 
-// Object3Dの生成（頂点バッファ・定数バッファの確保と初期値設定を行う）
-inline Object3D CreateObject3D(ID3D12Device* device, PrimitiveKind kind) {
-    Object3D obj{};
-    obj.id = NextObjectId();
-    obj.isSprite = (kind == PrimitiveKind::Sprite);
-
-    MeshBuffers mesh;
-    switch (kind) {
-    case PrimitiveKind::Sprite: obj.name = "Sprite"; obj.source = ObjectSource::Sprite; mesh = CreateSpriteMeshBuffers(device); break;
-    case PrimitiveKind::Sphere: obj.name = "Sphere"; obj.source = ObjectSource::Sphere; mesh = CreateSphereMeshBuffers(device); break;
-    case PrimitiveKind::Cube:   obj.name = "Cube";   obj.source = ObjectSource::Cube;   mesh = CreateCubeMeshBuffers(device, 2.0f); break;
-    }
+// 形（頂点・インデックスバッファと当たり判定用の頂点）をオブジェクトに持たせる。
+// バッファはComPtrなので、同じモデルを何体置いても実体は1つを共有する
+inline void AssignMesh(Object3D& obj, const MeshBuffers& mesh) {
     obj.vertexResource = mesh.vertexResource;
     obj.vbv = mesh.vbv;
     obj.indexResource = mesh.indexResource;
@@ -304,17 +294,12 @@ inline Object3D CreateObject3D(ID3D12Device* device, PrimitiveKind kind) {
     obj.localAABB = mesh.localAABB;
     obj.localPositions = mesh.localPositions;
     obj.triangleIndices = mesh.triangleIndices;
-    obj.colliderShape = (kind == PrimitiveKind::Sphere) ? ColliderShape::Sphere : ColliderShape::Box;
+}
 
-    if (kind == PrimitiveKind::Sprite) {
-        obj.transform = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
-        obj.lightingMode = (int)LightingMode::kNone; // 2DはLightingしない運用がデフォルト
-    }
-    else {
-        // 置いた直後は原点。位置はゲームのコードが決める
-        obj.transform = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
-        obj.lightingMode = (int)LightingMode::kHalfLambert; // 3DはHalfLambertをデフォルトに
-    }
+// 1体ごとに持つもの（位置と、行列・材質の定数バッファ）を初期化する。
+// 置いた直後のtransformは原点・等倍（Transformの既定値ではなく、ここで明示する）
+inline void InitializeObjectInstance(ID3D12Device* device, Object3D& obj) {
+    obj.transform = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
 
     obj.transformResource = CreateBufferResource(device, sizeof(TransformationMatrix));
     obj.transformResource->Map(0, nullptr, reinterpret_cast<void**>(&obj.transformData));
@@ -326,7 +311,26 @@ inline Object3D CreateObject3D(ID3D12Device* device, PrimitiveKind kind) {
     obj.materialData->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     obj.materialData->lightingMode = obj.lightingMode;
     obj.materialData->uvTransform = MakeIdentity4x4();
+}
 
+// Object3Dの生成（頂点バッファ・定数バッファの確保と初期値設定を行う）
+inline Object3D CreateObject3D(ID3D12Device* device, PrimitiveKind kind) {
+    Object3D obj{};
+    obj.id = NextObjectId();
+    obj.isSprite = (kind == PrimitiveKind::Sprite);
+
+    MeshBuffers mesh;
+    switch (kind) {
+    case PrimitiveKind::Sprite: obj.name = "Sprite"; mesh = CreateSpriteMeshBuffers(device); break;
+    case PrimitiveKind::Sphere: obj.name = "Sphere"; mesh = CreateSphereMeshBuffers(device); break;
+    case PrimitiveKind::Cube:   obj.name = "Cube";   mesh = CreateCubeMeshBuffers(device, 2.0f); break;
+    }
+    AssignMesh(obj, mesh);
+    obj.colliderShape = (kind == PrimitiveKind::Sphere) ? ColliderShape::Sphere : ColliderShape::Box;
+
+    // 2DはLightingしない。3DはHalfLambertを既定にする
+    obj.lightingMode = (kind == PrimitiveKind::Sprite) ? (int)LightingMode::kNone : (int)LightingMode::kHalfLambert;
+    InitializeObjectInstance(device, obj);
     return obj;
 }
 
@@ -341,17 +345,6 @@ struct CachedModelData {
     D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU{};
 };
 
-// objファイル（＋mtl・テクスチャ）を読み込み、GPUリソース一式をCachedModelDataとして構築する
-// 「頂点/マテリアル/テクスチャの読み込み〜GPUリソース構築」をすべてこの関数内で完結させてあるので、
-// 呼び出し側はディレクトリとファイル名を渡すだけでよい
-//
-// srvIndex/pendingIntermediateResourcesについて：
-//   ・srvIndexはモデル専用テクスチャを登録するSRVディスクリプタヒープのスロット番号。呼び出し側でインクリメントして使い切りを管理すること
-//   ・テクスチャのアップロードにはGPUコマンドが必要なため、生成中のcommandListにコマンドを積む。
-//     アップロード用の中間リソースはGPU転送完了まで解放できないため、pendingIntermediateResourcesに積んでおき、
-//     呼び出し側でコマンド実行＆フェンス待機した後に解放すること
-//   ・allowOwnTexture=falseを渡すと、mtlにmap_Kdがあってもモデル専用テクスチャを読まない。
-//     SRVディスクリプタヒープに空きが無いときに、呼び出し側がヒープの外への書き込みを避けるために使う
 // 部品1つぶんのキャッシュ。nameはobjのo/gで付いていた名前で、キャッシュの見出しに使う
 struct CachedModelPart {
     std::string name;
@@ -364,6 +357,17 @@ struct CachedModelPart {
 // テクスチャは1つのobjにつき1回だけ読み、全部品で共有する。
 // 部品ごとに読み直すとSRVディスクリプタヒープの枠を部品の数だけ消費してしまい、
 // 「分割したせいで置けるモデルが減る」ことになる
+//
+// 「頂点/マテリアル/テクスチャの読み込み〜GPUリソース構築」をすべてこの関数内で完結させてあるので、
+// 呼び出し側はディレクトリとファイル名を渡すだけでよい
+//
+// srvIndex/pendingIntermediateResourcesについて：
+//   ・srvIndexはモデル専用テクスチャを登録するSRVディスクリプタヒープのスロット番号。呼び出し側でインクリメントして使い切りを管理すること
+//   ・テクスチャのアップロードにはGPUコマンドが必要なため、生成中のcommandListにコマンドを積む。
+//     アップロード用の中間リソースはGPU転送完了まで解放できないため、pendingIntermediateResourcesに積んでおき、
+//     呼び出し側でコマンド実行＆フェンス待機した後に解放すること
+//   ・allowOwnTexture=falseを渡すと、mtlにmap_Kdがあってもモデル専用テクスチャを読まない。
+//     SRVディスクリプタヒープに空きが無いときに、呼び出し側がヒープの外への書き込みを避けるために使う
 inline std::vector<CachedModelPart> LoadCachedModelParts(
     ID3D12Device* device, ID3D12GraphicsCommandList* commandList,
     ID3D12DescriptorHeap* srvDescriptorHeap, UINT descriptorSizeSRV, UINT srvIndex,
@@ -425,37 +429,18 @@ inline std::vector<CachedModelPart> LoadCachedModelParts(
 
 // キャッシュ済みのCachedModelDataから、新しいObject3D（1体分のTransform/Material付き）を生成する
 // 頂点/インデックスバッファとテクスチャはキャッシュのものをそのまま共有し（ComPtrなので参照カウントで解放管理される）、
-// Transform/Materialだけを1体ごとに新規作成する。SphereやCubeをCreateボタンで増やすのと同じ感覚で
+// Transform/Materialだけを1体ごとに新規作成する。SphereやCubeをAddするのと同じ感覚で
 // 同じモデルの追加インスタンスを安く置けるようにするためのもの
 inline Object3D CreateObject3DFromCachedModel(ID3D12Device* device, const CachedModelData& cached, const std::string& name) {
     Object3D obj{};
     obj.id = NextObjectId();
     obj.isSprite = false;
     obj.name = name;
-    obj.source = ObjectSource::Model;
 
-    obj.vertexResource = cached.mesh.vertexResource;
-    obj.vbv = cached.mesh.vbv;
-    obj.indexResource = cached.mesh.indexResource;
-    obj.ibv = cached.mesh.ibv;
-    obj.indexCount = cached.mesh.indexCount;
-    obj.localAABB = cached.mesh.localAABB;
-    obj.localPositions = cached.mesh.localPositions;
-    obj.triangleIndices = cached.mesh.triangleIndices;
+    AssignMesh(obj, cached.mesh);
 
-    obj.transform = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} }; // 置いた直後は原点
     obj.lightingMode = (int)LightingMode::kHalfLambert;
-
-    obj.transformResource = CreateBufferResource(device, sizeof(TransformationMatrix));
-    obj.transformResource->Map(0, nullptr, reinterpret_cast<void**>(&obj.transformData));
-    obj.transformData->WVP = MakeIdentity4x4();
-    obj.transformData->World = MakeIdentity4x4();
-
-    obj.materialResource = CreateBufferResource(device, sizeof(Material));
-    obj.materialResource->Map(0, nullptr, reinterpret_cast<void**>(&obj.materialData));
-    obj.materialData->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-    obj.materialData->lightingMode = obj.lightingMode;
-    obj.materialData->uvTransform = MakeIdentity4x4();
+    InitializeObjectInstance(device, obj);
 
     obj.hasOwnTexture = cached.hasOwnTexture;
     obj.textureResource = cached.textureResource;

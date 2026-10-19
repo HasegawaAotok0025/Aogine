@@ -27,12 +27,6 @@ constexpr bool RingBasisMatchesAxis(int a) {
 static_assert(RingBasisMatchesAxis(0) && RingBasisMatchesAxis(1) && RingBasisMatchesAxis(2),
               "回転ギズモの輪の基準ベクトル(U,V)が軸と食い違っています");
 
-inline float Dot(const Vector3& a, const Vector3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-
-inline Vector3 AddScaled(const Vector3& p, const Vector3& dir, float s) {
-    return { p.x + dir.x * s, p.y + dir.y * s, p.z + dir.z * s };
-}
-
 // 値を一定の刻みに揃える。stepが0以下なら何もしない
 inline float SnapTo(float value, float step) {
     if (step <= 0.0f) { return value; }
@@ -41,21 +35,9 @@ inline float SnapTo(float value, float step) {
 
 // 角度を -π〜π に畳む。輪を回し続けたとき、±180度をまたいだ瞬間に1回転ぶん飛ぶのを防ぐ
 inline float WrapAngle(float angle) {
-    constexpr float kPi = 3.14159265359f;
-    while (angle > kPi) { angle -= kPi * 2.0f; }
-    while (angle < -kPi) { angle += kPi * 2.0f; }
+    while (angle > kPi) { angle -= kTwoPi; }
+    while (angle < -kPi) { angle += kTwoPi; }
     return angle;
-}
-
-// ワールド座標 → 画面のピクセル座標。カメラの後ろならfalse
-inline bool ProjectToScreen(const Vector3& p, const Matrix4x4& vp, float width, float height, Vector2& out) {
-    float x = p.x * vp.m[0][0] + p.y * vp.m[1][0] + p.z * vp.m[2][0] + vp.m[3][0];
-    float y = p.x * vp.m[0][1] + p.y * vp.m[1][1] + p.z * vp.m[2][1] + vp.m[3][1];
-    float w = p.x * vp.m[0][3] + p.y * vp.m[1][3] + p.z * vp.m[2][3] + vp.m[3][3];
-    if (w <= 1e-5f) { return false; }
-    out.x = (x / w * 0.5f + 0.5f) * width;
-    out.y = (1.0f - (y / w * 0.5f + 0.5f)) * height;
-    return true;
 }
 
 // 点pと線分abの最短距離（画面の上で、軸を掴めているかの判定に使う）

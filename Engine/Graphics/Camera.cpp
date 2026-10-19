@@ -2,12 +2,6 @@
 
 namespace {
 constexpr float kPitchLimit = 1.5f; // 真上・真下の手前（約85度）で止める
-
-void AddScaled(Vector3& target, const Vector3& dir, float scale) {
-    target.x += dir.x * scale;
-    target.y += dir.y * scale;
-    target.z += dir.z * scale;
-}
 }
 
 void Camera::Initialize(float aspectRatio, InputEngine* input) {
@@ -82,12 +76,12 @@ void Camera::UpdateMove(float deltaTime) {
     bool ctrlDown = input_->IsKeyDown(DIK_LCONTROL) || input_->IsKeyDown(DIK_RCONTROL);
     float velocity = moveSpeed_ * (shiftDown ? 3.0f : 1.0f) * deltaTime;
 
-    if (input_->IsKeyDown(DIK_W)) { AddScaled(transform_.translate, forward, velocity); }
-    if (input_->IsKeyDown(DIK_S)) { AddScaled(transform_.translate, forward, -velocity); }
-    if (input_->IsKeyDown(DIK_D)) { AddScaled(transform_.translate, right, velocity); }
-    if (input_->IsKeyDown(DIK_A)) { AddScaled(transform_.translate, right, -velocity); }
-    if (input_->IsKeyDown(DIK_E) || input_->IsKeyDown(DIK_SPACE)) { AddScaled(transform_.translate, up, velocity); }
-    if (input_->IsKeyDown(DIK_Q) || ctrlDown) { AddScaled(transform_.translate, up, -velocity); }
+    if (input_->IsKeyDown(DIK_W)) { transform_.translate = AddScaled(transform_.translate, forward, velocity); }
+    if (input_->IsKeyDown(DIK_S)) { transform_.translate = AddScaled(transform_.translate, forward, -velocity); }
+    if (input_->IsKeyDown(DIK_D)) { transform_.translate = AddScaled(transform_.translate, right, velocity); }
+    if (input_->IsKeyDown(DIK_A)) { transform_.translate = AddScaled(transform_.translate, right, -velocity); }
+    if (input_->IsKeyDown(DIK_E) || input_->IsKeyDown(DIK_SPACE)) { transform_.translate = AddScaled(transform_.translate, up, velocity); }
+    if (input_->IsKeyDown(DIK_Q) || ctrlDown) { transform_.translate = AddScaled(transform_.translate, up, -velocity); }
 
     float rotateVelocity = keyRotateSpeed_ * deltaTime;
     if (input_->IsKeyDown(DIK_LEFT))  { transform_.rotate.y -= rotateVelocity; }

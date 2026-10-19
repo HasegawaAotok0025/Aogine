@@ -83,7 +83,7 @@ inline std::vector<std::string> MakeObjectEditKeys(const std::vector<Object3D>& 
 inline void SaveObjectEdits(const std::map<std::string, ObjectEdit>& edits, const char* path = kObjectEditsFile) {
     std::ofstream file(path, std::ios::trunc);
     if (!file) { return; }
-    file << "# CG3 saved edits (key, visible, translate, rotate, scale, color, blend, lighting, untextured, uvScale, uvRotate, uvTranslate)\n";
+    file << "# Aogine saved edits (key, visible, translate, rotate, scale, color, blend, lighting, untextured, uvScale, uvRotate, uvTranslate)\n";
     file.precision(9);
     for (const auto& [key, e] : edits) {
         file << key << '\t' << (e.visible ? 1 : 0) << '\t'

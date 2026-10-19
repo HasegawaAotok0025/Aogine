@@ -5,7 +5,7 @@
 // ゲームの入口。ここから書き始める。
 //
 // 今入っているのは、エンジンの使い方を見せるための小さな見本：
-//   床・WASD（パッドなら左スティック）で動く箱・回るコイン・画面の文字
+//   床・半透明の箱・Instancingで並べた板・火のようなパーティクル
 // 作り始めるときは、中身を消して自分のものに置き換えてよい。
 //
 // 使える関数の一覧は 開発README.md を参照。
@@ -73,8 +73,7 @@ void SetupScene(Engine& engine) {
 }
 
 AppStartup GetAppStartup() {
-    AppStartup startup;
-    startup.windowTitle = L"Aogine";
-    startup.fullscreen = false;
+    AppStartup startup; // 既定値は App.h（題 "Aogine"・窓で起動・sRGBへ直す）
+    // 変えたいものだけここで上書きする。例：startup.fullscreen = true;
     return startup;
 }

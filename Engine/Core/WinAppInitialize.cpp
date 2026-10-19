@@ -18,7 +18,7 @@ void WinAppInitialize::Initialize(const wchar_t* title, int32_t& clientWidth, in
     CoInitializeEx(0, COINIT_MULTITHREADED);
 
     wc_.lpfnWndProc = WindowProc;
-    wc_.lpszClassName = L"CG2WindowClass";
+    wc_.lpszClassName = L"AogineWindowClass";
     wc_.hInstance = GetModuleHandle(nullptr);
     // 窓の上のマウスカーソル。指定しないと、窓の外で最後に出ていた形（読み込み中の輪など）のまま残る
     wc_.hCursor = LoadCursor(nullptr, IDC_ARROW);
@@ -39,4 +39,8 @@ void WinAppInitialize::Initialize(const wchar_t* title, int32_t& clientWidth, in
             wrc.right - wrc.left, wrc.bottom - wrc.top, nullptr, nullptr, wc_.hInstance, nullptr);
     }
     ShowWindow(hwnd_, SW_SHOW);
+}
+
+void WinAppInitialize::Finalize() {
+    CoUninitialize();
 }

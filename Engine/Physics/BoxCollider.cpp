@@ -22,21 +22,6 @@ AABB ComputeLocalAABB(const std::vector<Vector3>& positions) {
     return aabb;
 }
 
-namespace {
-    float Dot(const Vector3& a, const Vector3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-
-    Vector3 Cross(const Vector3& a, const Vector3& b) {
-        return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
-    }
-
-    Vector3 Sub(const Vector3& a, const Vector3& b) { return { a.x - b.x, a.y - b.y, a.z - b.z }; }
-    Vector3 Add(const Vector3& a, const Vector3& b) { return { a.x + b.x, a.y + b.y, a.z + b.z }; }
-    Vector3 Scale(const Vector3& v, float s) { return { v.x * s, v.y * s, v.z * s }; }
-    float Length(const Vector3& v) { return sqrtf(Dot(v, v)); }
-    // 点のワールド変換にはMathUtility.hのTransformPoint（共通の公開関数）を使う
-    // （以前はここにファイルローカル版を持っていたが、公開版と同名・同シグネチャで曖昧になるため削除した）
-}
-
 OBB TransformToOBB(const AABB& localAABB, const Matrix4x4& worldMatrix) {
     OBB obb;
 

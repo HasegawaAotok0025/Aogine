@@ -17,7 +17,7 @@ std::vector<Triangle> BuildWorldTriangles(const std::vector<Vector3>& localPosit
 // スザンヌ（約1000三角形）に対して「動く側」の頂点1つ1つを総当たりすると
 // 頂点数×三角形数のオーダーになり非常に重いため、三角形をあらかじめセルに振り分けておき、
 // 判定したい点の近くのセルだけを見れば済むようにする（近傍探索による計算範囲の限定）。
-// 三角形のワールド座標が変わらない限り作り直す必要はない（Engine::UpdatePhysics側でキャッシュする）
+// 三角形のワールド座標が変わらない限り作り直す必要はない（PhysicsWorld側でキャッシュする）
 struct TriangleGrid {
     float cellSize = 0.5f;
     std::unordered_map<int64_t, std::vector<uint32_t>> cells; // セル座標→そのセルに重なる三角形インデックス

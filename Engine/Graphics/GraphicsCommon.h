@@ -19,9 +19,6 @@
 #include <cassert>
 #include <wrl.h> // ComPtr（COMオブジェクトの解放忘れ・二重解放を防ぐスマートポインタ）
 
-#include <Xinput.h> // GamePad(XInput)操作用（リソースファイル不要、Windows SDK標準）
-#pragma comment(lib, "Xinput.lib")
-
 #include <dxcapi.h>
 #include <DirectXTex.h>
 #include "externals/DirectXTex/d3dx12.h"
@@ -832,7 +829,6 @@ inline MeshBuffers CreateMeshBuffersFromModelPart(ID3D12Device* device, const Mo
 
 // 球体頂点データの生成（Indexを利用する形に変更。頂点は格子点ごとに1つだけ持ち、共有する）
 inline MeshBuffers CreateSphereMeshBuffers(ID3D12Device* device, uint32_t subdivisionLat = 32, uint32_t subdivisionLon = 64) {
-    const float kPi = 3.1415926535f; // インクルードエラー回避のため直接定義
 
     float latStep = kPi / subdivisionLat;
     float lonStep = 2.0f * kPi / subdivisionLon;

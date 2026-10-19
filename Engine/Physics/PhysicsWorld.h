@@ -126,10 +126,6 @@ public:
     // 静止メッシュコライダーが「今フレーム誰かと衝突しているか」（ワイヤーフレームの緑/赤表示に使う）
     const std::vector<bool>& MeshCollidingFlags() const { return meshCollidingFlags_; }
 
-    // 直前のStep()で解いた接触点の数（デバッグ表示用）。
-    // 数が急に跳ね上がったら、オブジェクトがめり込んで大量に接触が生まれている合図になる
-    int ContactCount() const { return static_cast<int>(contacts_.size()); }
-
     // シーンを組み替えたときなど、接触の履歴を捨てて「何にも触れていない」状態から始め直す。
     // これをしないと、消えたオブジェクトとの接触が残ったままExitイベントが遅れて飛ぶことがある
     void ClearContactHistory() {
@@ -220,26 +216,11 @@ private:
     std::vector<OBB> meshBroadOBB_;
     std::vector<bool> hasMeshCollider_;
 
-    // ===== ベクトル小道具（このファイル内で完結させ、他へ影響を出さない） =====
-    static Vector3 Cross3(const Vector3& a, const Vector3& b) {
-        return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
-    }
-    static float Dot3(const Vector3& a, const Vector3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-    static float LengthSq3(const Vector3& v) { return Dot3(v, v); }
-    static Vector3 Add3(const Vector3& a, const Vector3& b) { return { a.x + b.x, a.y + b.y, a.z + b.z }; }
-    static Vector3 Sub3(const Vector3& a, const Vector3& b) { return { a.x - b.x, a.y - b.y, a.z - b.z }; }
-    static Vector3 Mul3(const Vector3& v, float s) { return { v.x * s, v.y * s, v.z * s }; }
-    static Vector3 Normalize3(const Vector3& v, const Vector3& fallback) {
-        float lenSq = LengthSq3(v);
-        if (lenSq < 1e-12f) { return fallback; }
-        return Mul3(v, 1.0f / sqrtf(lenSq));
-    }
-
     // 法線に垂直な2方向を作る（摩擦の向き）。どの向きでもよいので、成分が最も小さい軸との外積から作る
     static void BuildTangentBasis(const Vector3& normal, Vector3& outT0, Vector3& outT1) {
         Vector3 seed = (fabsf(normal.x) < 0.57735f) ? Vector3{ 1.0f, 0.0f, 0.0f } : Vector3{ 0.0f, 1.0f, 0.0f };
-        outT0 = Normalize3(Cross3(seed, normal), { 1.0f, 0.0f, 0.0f });
-        outT1 = Cross3(normal, outT0);
+        outT0 = Normalize(Cross(seed, normal), { 1.0f, 0.0f, 0.0f });
+        outT1 = Cross(normal, outT0);
     }
 
     // ===== 剛体の基本操作 =====
@@ -267,7 +248,7 @@ private:
         Vector3 result{ 0.0f, 0.0f, 0.0f };
         for (int k = 0; k < 3; ++k) {
             if (invI[k] == 0.0f) { continue; } // 拘束された軸（無限の慣性）
-            result = Add3(result, Mul3(body.axis[k], invI[k] * Dot3(worldVector, body.axis[k])));
+            result = Add(result, Scale(body.axis[k], invI[k] * Dot(worldVector, body.axis[k])));
         }
         return result;
     }
@@ -278,13 +259,13 @@ private:
         if (body.invMass <= 0.0f) { return; } // 静止オブジェクトは無限に重いので動かない
 
         Object3D& obj = *body.obj;
-        obj.velocity = Add3(obj.velocity, Mul3(impulse, body.invMass));
-        obj.angularVelocity = Add3(obj.angularVelocity, ApplyInverseInertia(body, Cross3(r, impulse)));
+        obj.velocity = Add(obj.velocity, Scale(impulse, body.invMass));
+        obj.angularVelocity = Add(obj.angularVelocity, ApplyInverseInertia(body, Cross(r, impulse)));
     }
 
     // 重心からrだけ離れた点の速度（並進＋回転による周速度）
     static Vector3 PointVelocity(const BodyProxy& body, const Vector3& r) {
-        return Add3(body.obj->velocity, Cross3(body.obj->angularVelocity, r));
+        return Add(body.obj->velocity, Cross(body.obj->angularVelocity, r));
     }
 
     // 方向n・腕rにおける「有効質量」の逆数。
@@ -292,8 +273,8 @@ private:
     // 回転しにくい向き（拘束された軸や、慣性モーメントの大きい軸）ほど小さくなり、重く感じる
     static float EffectiveMassTerm(const BodyProxy& body, const Vector3& r, const Vector3& n) {
         if (body.invMass <= 0.0f) { return 0.0f; }
-        Vector3 rn = Cross3(r, n);
-        return body.invMass + Dot3(rn, ApplyInverseInertia(body, rn));
+        Vector3 rn = Cross(r, n);
+        return body.invMass + Dot(rn, ApplyInverseInertia(body, rn));
     }
 
     // 摩擦係数・反発係数を2物体から合成する。摩擦は幾何平均、反発は大きい方（一般的な取り決め）
@@ -379,20 +360,9 @@ private:
         TriggerOverlap overlap{};
         overlap.a = &a;
         overlap.b = &b;
-        overlap.point = Mul3(Add3(obbA.center, obbB.center), 0.5f);
-        overlap.normal = Normalize3(Sub3(obbA.center, obbB.center), { 0.0f, 1.0f, 0.0f });
+        overlap.point = Scale(Add(obbA.center, obbB.center), 0.5f);
+        overlap.normal = Normalize(Sub(obbA.center, obbB.center), { 0.0f, 1.0f, 0.0f });
         triggerOverlaps_.push_back(overlap);
-    }
-
-    // OBBの表面上で、指定方向dirへ最も遠い点（支持点）。各軸で「dirと同じ向きなら+半径、逆なら-半径」を選ぶだけ
-    static Vector3 SupportPointOnOBB(const OBB& obb, const Vector3& dir) {
-        const float half[3] = { obb.halfSize.x, obb.halfSize.y, obb.halfSize.z };
-        Vector3 result = obb.center;
-        for (int i = 0; i < 3; ++i) {
-            float d = Dot3(obb.axis[i], dir);
-            result = Add3(result, Mul3(obb.axis[i], (d >= 0.0f) ? half[i] : -half[i]));
-        }
-        return result;
     }
 
     // このフレームぶんの接触点をすべて集める
@@ -412,6 +382,9 @@ private:
                 Object3D& b = objects[j];
                 // どちらも動かないなら調べる意味がない
                 if (a.GetInverseMass() <= 0.0f && b.GetInverseMass() <= 0.0f) { continue; }
+                // スプライトは画面の板（座標は画面の上の値）で、3Dの世界には居ない。
+                // レイや影と同じく、物理でも相手にしない
+                if (a.isSprite || b.isSprite) { continue; }
 
                 // トリガーが絡む組は、形状の種類にかかわらず「重なっているか」だけを見る。
                 // 押し返さない以上、接触点を精密に求める意味がないので、粗いOBB判定で十分
@@ -448,7 +421,7 @@ private:
             Vector3 pushedCenter = center;
             Vector3 normal, contactPoint;
             if (ResolveSphereVsMesh(pushedCenter, radius, meshTriangleCache_[meshIndex], meshGridCache_[meshIndex], normal, contactPoint)) {
-                float penetration = sqrtf(LengthSq3(Sub3(pushedCenter, center)));
+                float penetration = sqrtf(LengthSq(Sub(pushedCenter, center)));
                 meshCollidingFlags_[meshIndex] = true;
                 AddContact(mover, mesh, contactPoint, normal, penetration);
             }
@@ -472,7 +445,7 @@ private:
         if (ResolveVerticesVsMesh(worldVerts, mover.meshVertexRadius, meshTriangleCache_[meshIndex], meshGridCache_[meshIndex], pushOffset, normal, contactPoint)) {
             meshCollidingFlags_[meshIndex] = true;
             meshCollidingFlags_[moverIndex] = true;
-            AddContact(mover, mesh, contactPoint, normal, sqrtf(LengthSq3(pushOffset)));
+            AddContact(mover, mesh, contactPoint, normal, sqrtf(LengthSq(pushOffset)));
         }
     }
 
@@ -525,8 +498,8 @@ private:
 
             float linear = (std::max)(0.0f, 1.0f - linearDamping * deltaTime);
             float angular = (std::max)(0.0f, 1.0f - angularDamping * deltaTime);
-            obj.velocity = Mul3(obj.velocity, linear);
-            obj.angularVelocity = Mul3(obj.angularVelocity, angular);
+            obj.velocity = Scale(obj.velocity, linear);
+            obj.angularVelocity = Scale(obj.angularVelocity, angular);
         }
     }
 
@@ -544,8 +517,8 @@ private:
             c.bodyA = MakeBodyProxy(*c.a);
             c.bodyB = MakeBodyProxy(*c.b);
 
-            c.rA = Sub3(c.point, c.bodyA.com);
-            c.rB = Sub3(c.point, c.bodyB.com);
+            c.rA = Sub(c.point, c.bodyA.com);
+            c.rB = Sub(c.point, c.bodyB.com);
             BuildTangentBasis(c.normal, c.tangent[0], c.tangent[1]);
 
             float kn = EffectiveMassTerm(c.bodyA, c.rA, c.normal) + EffectiveMassTerm(c.bodyB, c.rB, c.normal);
@@ -559,8 +532,8 @@ private:
             float positionBias = (kBaumgarte / deltaTime) * (std::max)(0.0f, c.penetration - kPenetrationSlop);
 
             // 反発：ぶつかってきた速さの一部を跳ね返す
-            Vector3 relative = Sub3(PointVelocity(c.bodyA, c.rA), PointVelocity(c.bodyB, c.rB));
-            float approachSpeed = Dot3(relative, c.normal);
+            Vector3 relative = Sub(PointVelocity(c.bodyA, c.rA), PointVelocity(c.bodyB, c.rB));
+            float approachSpeed = Dot(relative, c.normal);
             float restitutionBias = 0.0f;
             if (approachSpeed < -kRestitutionThreshold) { restitutionBias = -c.restitution * approachSpeed; }
             c.approachSpeed = -approachSpeed; // イベントには「近づいてきた速さ」を正の値で載せる
@@ -579,8 +552,8 @@ private:
             for (Contact& c : contacts_) {
                 // --- 摩擦（先に解く。垂直抗力は前の反復の値を使う）---
                 for (int t = 0; t < 2; ++t) {
-                    Vector3 relative = Sub3(PointVelocity(c.bodyA, c.rA), PointVelocity(c.bodyB, c.rB));
-                    float vt = Dot3(relative, c.tangent[t]);
+                    Vector3 relative = Sub(PointVelocity(c.bodyA, c.rA), PointVelocity(c.bodyB, c.rB));
+                    float vt = Dot(relative, c.tangent[t]);
                     float lambda = -vt * c.tangentMass[t];
 
                     // クーロン摩擦：働ける力の上限は μ×垂直抗力。これを超える力は出せず、物は滑り出す
@@ -589,14 +562,14 @@ private:
                     c.tangentImpulse[t] = (std::max)(-maxFriction, (std::min)(maxFriction, oldImpulse + lambda));
                     float applied = c.tangentImpulse[t] - oldImpulse;
 
-                    Vector3 impulse = Mul3(c.tangent[t], applied);
+                    Vector3 impulse = Scale(c.tangent[t], applied);
                     ApplyImpulse(c.bodyA, impulse, c.rA);
-                    ApplyImpulse(c.bodyB, Mul3(impulse, -1.0f), c.rB);
+                    ApplyImpulse(c.bodyB, Scale(impulse, -1.0f), c.rB);
                 }
 
                 // --- 法線方向（めり込みを止める）---
-                Vector3 relative = Sub3(PointVelocity(c.bodyA, c.rA), PointVelocity(c.bodyB, c.rB));
-                float vn = Dot3(relative, c.normal);
+                Vector3 relative = Sub(PointVelocity(c.bodyA, c.rA), PointVelocity(c.bodyB, c.rB));
+                float vn = Dot(relative, c.normal);
                 float lambda = (-vn + c.velocityBias) * c.normalMass;
 
                 // 累積撃力が負にならないようクランプする。
@@ -605,9 +578,9 @@ private:
                 c.normalImpulse = (std::max)(0.0f, oldImpulse + lambda);
                 float applied = c.normalImpulse - oldImpulse;
 
-                Vector3 impulse = Mul3(c.normal, applied);
+                Vector3 impulse = Scale(c.normal, applied);
                 ApplyImpulse(c.bodyA, impulse, c.rA);
-                ApplyImpulse(c.bodyB, Mul3(impulse, -1.0f), c.rB);
+                ApplyImpulse(c.bodyB, Scale(impulse, -1.0f), c.rB);
             }
         }
     }
@@ -689,7 +662,7 @@ private:
             info.approachSpeed = approachSpeed;
             info.strongestImpulse = impulse;
         }
-        info.pointSum = Add3(info.pointSum, point);
+        info.pointSum = Add(info.pointSum, point);
         info.pointCount++;
         info.impulse += impulse; // 撃力は合計。4点で支えている接地なら4点ぶんの合計が着地の強さになる
     }
@@ -700,7 +673,7 @@ private:
         e.a = info.a;
         e.b = info.b;
         e.isTrigger = info.isTrigger;
-        e.point = (info.pointCount > 0) ? Mul3(info.pointSum, 1.0f / (float)info.pointCount) : info.pointSum;
+        e.point = (info.pointCount > 0) ? Scale(info.pointSum, 1.0f / (float)info.pointCount) : info.pointSum;
         e.normal = info.normal;
         e.impulse = info.impulse;
         e.approachSpeed = (phase == CollisionPhase::Enter) ? info.approachSpeed : 0.0f;
@@ -708,13 +681,7 @@ private:
     }
 
     // IDから今のシーン上のオブジェクトを探す。Exitイベントの相手を引き直すときにだけ使う（頻度は低い）
-    Object3D* FindObjectById(uint32_t id) {
-        if (id == 0) { return nullptr; }
-        if (sceneObjects_) {
-            for (auto& obj : *sceneObjects_) { if (obj.id == id) { return &obj; } }
-        }
-        return nullptr;
-    }
+    Object3D* FindObjectById(uint32_t id) { return sceneObjects_ ? ::FindObjectById(*sceneObjects_, id) : nullptr; }
 
     // ===== 位置・姿勢の積分 =====
     void IntegratePositions(std::vector<Object3D>& objects, float deltaTime) {
@@ -724,17 +691,17 @@ private:
         for (auto& obj : objects) {
             if (obj.isStatic || !obj.usePhysics) { continue; }
 
-            float speedSq = LengthSq3(obj.velocity);
-            if (speedSq > kMaxSpeed * kMaxSpeed) { obj.velocity = Mul3(obj.velocity, kMaxSpeed / sqrtf(speedSq)); }
-            float angSpeedSq = LengthSq3(obj.angularVelocity);
-            if (angSpeedSq > kMaxAngularSpeed * kMaxAngularSpeed) { obj.angularVelocity = Mul3(obj.angularVelocity, kMaxAngularSpeed / sqrtf(angSpeedSq)); }
+            float speedSq = LengthSq(obj.velocity);
+            if (speedSq > kMaxSpeed * kMaxSpeed) { obj.velocity = Scale(obj.velocity, kMaxSpeed / sqrtf(speedSq)); }
+            float angSpeedSq = LengthSq(obj.angularVelocity);
+            if (angSpeedSq > kMaxAngularSpeed * kMaxAngularSpeed) { obj.angularVelocity = Scale(obj.angularVelocity, kMaxAngularSpeed / sqrtf(angSpeedSq)); }
 
             // 剛体は重心まわりに回る。ところがtransform.translateが指すのは「ローカル原点」であって
             // 重心とは限らない（objモデルは形状の中心が原点からずれていることが多い）。
             // そこで「重心をどこへ持っていきたいか」を先に決め、姿勢を進めたあとで
             // 原点の位置を逆算する。こうしないと原点まわりに回ってしまい、撃力の計算（重心基準）と食い違う
             Vector3 localCenterOffset = obj.GetLocalCenterOffset();
-            Vector3 targetCenterOfMass = Add3(obj.GetCenterOfMass(), Mul3(obj.velocity, deltaTime));
+            Vector3 targetCenterOfMass = Add(obj.GetCenterOfMass(), Scale(obj.velocity, deltaTime));
 
             obj.orientation = IntegrateQuaternion(obj.orientation, obj.angularVelocity, deltaTime);
 
@@ -747,7 +714,7 @@ private:
                 obj.orientation = QuaternionFromEulerXYZ(euler);
             }
 
-            obj.transform.translate = Sub3(targetCenterOfMass, RotateVector(obj.orientation, localCenterOffset));
+            obj.transform.translate = Sub(targetCenterOfMass, RotateVector(obj.orientation, localCenterOffset));
         }
     }
 
@@ -763,8 +730,8 @@ private:
         for (auto& obj : objects) {
             if (obj.isStatic || !obj.usePhysics) { obj.sleepTimer = 0.0f; continue; }
 
-            bool slow = LengthSq3(obj.velocity) < kSleepLinearSpeed * kSleepLinearSpeed &&
-                        LengthSq3(obj.angularVelocity) < kSleepAngularSpeed * kSleepAngularSpeed;
+            bool slow = LengthSq(obj.velocity) < kSleepLinearSpeed * kSleepLinearSpeed &&
+                        LengthSq(obj.angularVelocity) < kSleepAngularSpeed * kSleepAngularSpeed;
             if (!slow) { obj.sleepTimer = 0.0f; continue; }
 
             obj.sleepTimer += deltaTime;
