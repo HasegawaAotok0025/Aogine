@@ -21,6 +21,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR commandLine, _
     SetupScene(engine);
 
     engine.Run();
+    FinalizeScene();
     engine.Shutdown();
 
     return 0;

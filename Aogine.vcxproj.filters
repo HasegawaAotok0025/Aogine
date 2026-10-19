@@ -41,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Game\Game.cpp"><Filter>Game</Filter></ClCompile>
+    <ClCompile Include="Game\Player.cpp"><Filter>Game</Filter></ClCompile>
     <ClCompile Include="main.cpp"><Filter>Engine</Filter></ClCompile>
     <ClCompile Include="Engine\Core\AudioEngine.cpp"><Filter>Engine\Core</Filter></ClCompile>
     <ClCompile Include="Engine\Core\InputEngine.cpp"><Filter>Engine\Core</Filter></ClCompile>
@@ -51,6 +52,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h"><Filter>Game</Filter></ClInclude>
+    <ClInclude Include="Game\Player.h"><Filter>Game</Filter></ClInclude>
     <ClInclude Include="Engine\Engine.h"><Filter>Engine</Filter></ClInclude>
     <ClInclude Include="Engine\Core\AudioEngine.h"><Filter>Engine\Core</Filter></ClInclude>
     <ClInclude Include="Engine\Core\InputEngine.h"><Filter>Engine\Core</Filter></ClInclude>

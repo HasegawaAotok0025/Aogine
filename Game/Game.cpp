@@ -1,5 +1,6 @@
 #include "../App.h"
 #include "../Engine/Engine.h"
+#include "Player.h"
 
 // ============================================================================
 // ゲームの入口。ここから書き始める。
@@ -13,6 +14,9 @@
 // ============================================================================
 
 
+
+// キーで動かす箱。SetupSceneで作り、FinalizeSceneで片付ける
+static Player* player = nullptr;
 
 void SetupScene(Engine& engine) {
     // --- カメラ ---
@@ -72,12 +76,18 @@ void SetupScene(Engine& engine) {
         engine.AddParticleEmitter(fire);
     }
 
+    // --- キーで動かす箱（Player）---
+    player = new Player();
+    player->Initialize(engine, { 0.0f, 2.0f, -2.0f });
+
     // --- モデルの差し替えの見本：Mキーで、スザンヌとUVチェッカーの形を切り替える ---
     // 参照ではなくidで控える（物が増えると参照は古い場所を指すため）
     const uint32_t modelId = engine.AddModel("resources/SuzannuObj", "suzannu.obj").id;
     if (Object3D* model = engine.FindById(modelId)) { model->transform.translate = { -3.0f, 1.0f, 0.0f }; }
 
-    engine.SetUpdateCallback([&engine, modelId, showingSuzanne = true](float) mutable {
+    engine.SetUpdateCallback([&engine, modelId, showingSuzanne = true](float deltaTime) mutable {
+        player->Update(deltaTime);
+
         if (engine.Input().IsKeyTriggered(DIK_M)) {
             showingSuzanne = !showingSuzanne;
             if (showingSuzanne) { engine.SetModel(modelId, "resources/SuzannuObj", "suzannu.obj"); }
@@ -87,8 +97,13 @@ void SetupScene(Engine& engine) {
         // --- 絵の切り取りの見本：512x512の絵の左上4分の1（256x256）だけを、右上に小さく出す ---
         engine.HudSprite2DRegion("resources/uvChecker.png", 1170.0f, 110.0f, 0.0f, 0.0f, 256.0f, 256.0f,
                                  0.0f, Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.5f);
-        engine.DrawText(Engine::kUiMarginX, Engine::kUiMarginY, "[M] モデルを切り替える", 20.0f);
+        engine.DrawText(Engine::kUiMarginX, Engine::kUiMarginY, "[WASD] 移動  [Space] ジャンプ  [M] モデルを切り替える", 20.0f);
     });
+}
+
+void FinalizeScene() {
+    delete player;
+    player = nullptr;
 }
 
 AppStartup GetAppStartup() {
