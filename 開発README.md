@@ -238,11 +238,11 @@ if (engine.Input().IsMouseTriggered(MouseButton::Left) && engine.MouseRay(o, d))
 
 ## 7. 音（SoundBank）
 
-WAVだけ読める。名前を付けて登録し、名前で鳴らす。
+WAV に加えて mp3・m4a(AAC)・wma なども読める（Media Foundation で読み込み時に展開する）。名前を付けて登録し、名前で鳴らす。
 
 ```cpp
 engine.Sounds().Register("jump", "resources/Audio/jump.wav");
-engine.Sounds().Register("bgm",  "resources/Audio/bgm.wav", 0.8f);  // 音ごとの音量
+engine.Sounds().Register("bgm",  "resources/Audio/bgm.mp3", 0.8f);  // 音ごとの音量。mp3もそのまま使える
 engine.Sounds().LoadAll(engine.Audio());   // Registerし終えてから1回
 
 engine.Sounds().Play("jump");
@@ -253,6 +253,7 @@ engine.Sounds().PlayMusic("bgm");          // ループ再生
 |---|---|
 | `Register(名前, パス, 音量=1)` | 登録（まだ読まない） |
 | `LoadAll(engine.Audio())` | 登録したものを読む |
+| `engine.Audio().LoadAudio(パス)` | 1つだけ読む（形式は問わない。`SoundBank` を通さず自分で持つとき） |
 | `Play(名前, 音量=1, ピッチ=1)` | 効果音 |
 | `PlayMusic(名前)` / `StopMusic()` | 曲（1曲だけ） |
 | `SetMuted(bool)` | 消音 |

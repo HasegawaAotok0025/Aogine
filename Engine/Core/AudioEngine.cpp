@@ -4,14 +4,23 @@
 #include <cassert>
 #include <cstring>
 #include <algorithm>
+#include <mfapi.h>
+#include <mfidl.h>
+#include <mfreadwrite.h>
 
 #pragma comment(lib, "xaudio2.lib")
+#pragma comment(lib, "Mfplat.lib")
+#pragma comment(lib, "Mfreadwrite.lib")
+#pragma comment(lib, "mfuuid.lib")
 
 void AudioEngine::Initialize() {
     HRESULT hr = XAudio2Create(&xAudio2_, 0, XAUDIO2_DEFAULT_PROCESSOR);
     assert(SUCCEEDED(hr));
     hr = xAudio2_->CreateMasteringVoice(&masterVoice_);
     assert(SUCCEEDED(hr));
+    // 圧縮された音（mp3など）を展開するMedia Foundation。COMの開始（WinAppInitialize）のあとで呼ぶ
+    mediaFoundationStarted_ = SUCCEEDED(MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET));
+    if (!mediaFoundationStarted_) { Log("[Audio] Media Foundationを始められませんでした。WAV以外の音は鳴らせません"); }
 }
 
 void AudioEngine::Finalize() {
@@ -23,6 +32,7 @@ void AudioEngine::Finalize() {
     // MasteringVoiceはIXAudio2破棄時に自動的に破棄されるので、明示的なDestroyVoiceは不要
     xAudio2_.Reset();
     masterVoice_ = nullptr;
+    if (mediaFoundationStarted_) { MFShutdown(); mediaFoundationStarted_ = false; }
 }
 
 namespace {
@@ -110,6 +120,73 @@ SoundData AudioEngine::LoadWave(const std::string& filePath) {
     buffer.resize(static_cast<size_t>(actuallyRead));
     soundData.wfex = wfex;
     soundData.buffer = std::move(buffer);
+    return soundData;
+}
+
+// Media Foundationで、ファイルの形式を問わずPCMへ展開して読む。
+// 読めなければ（ファイルが無い・形式が分からない）、中身の無いSoundDataを返す（LoadWaveと同じく、鳴らないだけで止まらない）
+SoundData AudioEngine::LoadAudio(const std::string& filePath) {
+    SoundData soundData;
+    if (!mediaFoundationStarted_) { return LoadWave(filePath); } // 展開できないなら、WAVとしてだけ読んでみる
+
+    ComPtr<IMFSourceReader> reader;
+    HRESULT hr = MFCreateSourceReaderFromURL(ConvertString(filePath).c_str(), nullptr, &reader);
+    if (FAILED(hr)) {
+        Log("[LoadAudio] 開けませんでした: " + filePath + " → この音は鳴らさずに続けます");
+        return soundData;
+    }
+
+    // 出てくる中身を「PCMの音」に指定する。mp3などはここで展開されて出てくる
+    ComPtr<IMFMediaType> pcmType;
+    MFCreateMediaType(&pcmType);
+    pcmType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+    pcmType->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
+    hr = reader->SetCurrentMediaType(static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM), nullptr, pcmType.Get());
+    if (FAILED(hr)) {
+        Log("[LoadAudio] 音として読めない形式です: " + filePath);
+        return soundData;
+    }
+
+    // 実際に出てくる形式（チャンネル数・サンプリング周波数・ビット数）を受け取る
+    ComPtr<IMFMediaType> outputType;
+    reader->GetCurrentMediaType(static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM), &outputType);
+    WAVEFORMATEX* format = nullptr;
+    UINT32 formatSize = 0;
+    hr = MFCreateWaveFormatExFromMFMediaType(outputType.Get(), &format, &formatSize);
+    if (FAILED(hr) || !format) {
+        Log("[LoadAudio] 音の形式を受け取れませんでした: " + filePath);
+        return soundData;
+    }
+    soundData.wfex = *format;
+    CoTaskMemFree(format);
+    // 拡張付きの形式（WAVE_FORMAT_EXTENSIBLE）で返ることがある。中身はただのPCMなので、
+    // 拡張部分を持たない普通のPCMとして名乗り直す（WAVEFORMATEXには拡張部分の置き場が無い）
+    soundData.wfex.wFormatTag = WAVE_FORMAT_PCM;
+    soundData.wfex.cbSize = 0;
+
+    // 最後まで読み、つなげて1本のPCMにする
+    std::vector<BYTE> pcm;
+    while (true) {
+        DWORD flags = 0;
+        ComPtr<IMFSample> sample;
+        hr = reader->ReadSample(static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM), 0, nullptr, &flags, nullptr, &sample);
+        if (FAILED(hr) || (flags & MF_SOURCE_READERF_ENDOFSTREAM)) { break; }
+        if (!sample) { continue; }
+
+        ComPtr<IMFMediaBuffer> buffer;
+        if (FAILED(sample->ConvertToContiguousBuffer(&buffer))) { continue; }
+        BYTE* data = nullptr;
+        DWORD length = 0;
+        if (SUCCEEDED(buffer->Lock(&data, nullptr, &length))) {
+            pcm.insert(pcm.end(), data, data + length);
+            buffer->Unlock();
+        }
+    }
+    if (pcm.empty()) {
+        Log("[LoadAudio] 音のデータが入っていません: " + filePath);
+        return soundData;
+    }
+    soundData.buffer = std::move(pcm);
     return soundData;
 }
 

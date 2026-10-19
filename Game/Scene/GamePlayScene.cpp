@@ -68,7 +68,12 @@ void GamePlayScene::Initialize(Engine& engine) {
         engine.AddParticleEmitter(fire);
     }
 
-    // --- キーで動かす箱（Player）---
+    // --- 音：読み込みは最初の1回だけ（2回目以降のLoadAllは、読み込み済みの音を飛ばす）。鳴らすのは名前で ---
+    // LoadAllはMedia Foundationで読むので、ここをmp3などに変えてもそのまま鳴る
+    engine.Sounds().Register("jump", "resources/Audio/jump.wav", 0.6f);
+    engine.Sounds().LoadAll(engine.Audio());
+
+    // --- キーで動かす箱（Player）。Spaceで跳ぶと "jump" が鳴る ---
     player_ = std::make_unique<Player>();
     player_->Initialize(engine, { 0.0f, 2.0f, -2.0f });
 

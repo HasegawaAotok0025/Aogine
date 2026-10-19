@@ -23,7 +23,7 @@
 // エンジンは名前で鳴らすことしかせず、音の並びを一切知らない。
 //
 // ■ 担当すること
-//   名前とWAVの対応を覚える／読み込む／鳴らす／後始末する
+//   名前と音のファイル（WAV・mp3など）の対応を覚える／読み込む／鳴らす／後始末する
 //   音ごとの音量、全体の音量、曲の音量、消音
 //
 // ■ 担当しないこと
@@ -64,7 +64,7 @@ public:
         int loaded = 0;
         for (auto& [name, entry] : entries_) {
             if (entry.loaded) { ++loaded; continue; }
-            entry.data = audio.LoadWave(entry.filePath);
+            entry.data = audio.LoadAudio(entry.filePath); // WAVのほか、mp3なども読める
             entry.loaded = entry.data.IsLoaded();
             if (entry.loaded) { ++loaded; }
         }

@@ -18,7 +18,7 @@ void Player::Initialize(Engine& engine, const Vector3& position) {
     id_ = box.id;
 }
 
-void Player::Update(float /*deltaTime*/) {
+void Player::Update(float deltaTime) {
     Object3D* box = engine_ ? engine_->FindById(id_) : nullptr;
     if (!box) { return; }
 
@@ -32,9 +32,19 @@ void Player::Update(float /*deltaTime*/) {
     box->velocity.x = moveX * kMoveSpeed;
     box->velocity.z = moveZ * kMoveSpeed;
 
-    // 地面に着いているときだけ跳べる（空中で連続して跳ばないように）
-    if (IsGrounded() && input.IsKeyTriggered(DIK_SPACE)) {
+    // 地面に着いているときだけ跳べる（空中で連続して跳ばないように）。
+    // ただし足場の端から落ちた直後の少しの間は、まだ跳べることにする（コヨーテタイム）。
+    // 「端で押したのに跳べなかった」と感じさせないための、よくある手当て。
+    // 残り時間は経過時間で減らすので、フレームレートが変わっても同じ長さになる
+    if (IsGrounded()) {
+        coyoteTimer_ = kCoyoteTime;
+    } else {
+        coyoteTimer_ -= deltaTime;
+    }
+    if (coyoteTimer_ > 0.0f && input.IsKeyTriggered(DIK_SPACE)) {
         box->velocity.y = kJumpSpeed;
+        coyoteTimer_ = 0.0f; // 1回跳んだら、空中でもう一度は跳べない
+        engine_->Sounds().Play("jump");
     }
 
     // 床の外へ落ちたら、最初の場所からやり直す

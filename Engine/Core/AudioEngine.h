@@ -7,7 +7,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-// LoadWaveで読み込んだWAVサウンドデータ（フォーマット情報＋PCMデータ本体）。
+// LoadWave / LoadAudioで読み込んだサウンドデータ（フォーマット情報＋PCMデータ本体）。
 // 本体はvectorで持つので、解放し忘れも二重解放も起きない。
 // 鳴っている間はXAudio2がこの中身を直接読むので、鳴り終わるまでは消さないこと
 struct SoundData {
@@ -36,8 +36,12 @@ public:
     void Initialize();
     void Finalize();
 
-    // WAVファイルを読み込む（例："resources/Audio/se_hit.wav"）
+    // WAVファイルを読み込む（例："resources/Audio/se_hit.wav"）。WAVの中身を自前で読む
     SoundData LoadWave(const std::string& filePath);
+
+    // 音のファイルを読み込む。Media Foundationで展開するので、WAVに加えてmp3・m4a(AAC)・wmaなど
+    // 圧縮された形式も読める。中身はPCMに展開して持つ（鳴らすたびに展開し直さない）
+    SoundData LoadAudio(const std::string& filePath);
     // 音のデータを手放す（呼ばなくてもSoundDataが消えるときに自動で解放される）
     void Unload(SoundData& soundData);
 
@@ -61,4 +65,5 @@ private:
     ComPtr<IXAudio2> xAudio2_;
     IXAudio2MasteringVoice* masterVoice_ = nullptr;
     std::vector<IXAudio2SourceVoice*> oneShotVoices_; // 鳴らしっぱなしにした音（Updateが片付ける）
+    bool mediaFoundationStarted_ = false;              // MFStartupが成功したか（MFShutdownと対にする）
 };

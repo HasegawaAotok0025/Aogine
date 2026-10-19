@@ -29,8 +29,10 @@ private:
     Engine* engine_ = nullptr;
     uint32_t id_ = 0;
     Vector3 startPosition_{};
+    float coyoteTimer_ = 0.0f; // 足場を離れてからも、まだ跳べる残り時間[秒]
 
     static constexpr float kMoveSpeed = 4.0f;  // 横に動く速さ[m/s]
     static constexpr float kJumpSpeed = 6.0f;  // 跳ぶ瞬間の上向きの速さ[m/s]
     static constexpr float kFallLimitY = -10.0f; // これより下は落ちたとみなす
+    static constexpr float kCoyoteTime = 0.1f;   // 足場を離れてから跳べる猶予[秒]
 };
