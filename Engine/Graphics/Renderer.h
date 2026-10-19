@@ -18,9 +18,69 @@ inline void EnableDebugLayer() {
 }
 #endif
 
-// DirectX12の基盤（デバイス・コマンド関連・スワップチェーン・各種ディスクリプタヒープ・深度バッファ等）一式
-// 「この時したい動作」ではなく「常に必要な土台」なので、まとめてここに持たせる
-struct GraphicsContext {
+// 画面へ書き出すときの色の扱い。
+//
+//   AsIs : 計算した値をそのまま置く。このエンジンが今まで出していた見え方
+//   Srgb : 置くときにsRGBへ直す。同じ数字でも明るく見える
+//
+// 本来はSrgbが筋（絵はsRGBとして読み込み、計算はリニアで行っているので、
+// 出すときに戻すのが対）。ただしAsIsで見た目を決め切ったゲームがすでにあるため、
+// 既定はSrgb（直す）。各PSOは「sRGBで描く」と名乗っているので、
+// 直さないと描き先の形式と食い違い、D3D12のデバッグレイヤーが
+// 毎フレーム「The render target format in slot 0 does not match」と怒る。
+//
+// AsIsを選べるようにしてあるのは、sRGBへ直さないエンジンで作った物を
+// 載せ替えて、そのときと同じ色で出したいときのため。
+// 切り替えると絵の色が全部変わる
+enum class SurfaceColor {
+    AsIs,
+    Srgb,
+};
+
+// ============================================================================
+// GraphicsContext：DirectX12の基盤（デバイス・コマンド関連・スワップチェーン・各種ディスクリプタヒープ・深度バッファ等）
+//
+// 「この時したい動作」ではなく「常に必要な土台」なので、まとめてここに持たせる。
+// 1フレームの描画は PreDraw（描く前の準備）→ 各描画 → PostDraw（画面へ出して次のフレームの準備）で囲む。
+//
+// 中身（device / commandList など）はpublicにしてある。パイプラインやテクスチャを作る関数が
+// 引数として直接受け取るため。保持するDirectXのオブジェクトはすべてComPtrで、Releaseは一切書かない
+// ============================================================================
+class GraphicsContext {
+public:
+    // ===== 作る・作り直す・片付ける =====
+
+    // デバイスからスワップチェーン・深度バッファまで一式を作る
+    void Initialize(HWND hwnd, int32_t width, int32_t height, SurfaceColor surfaceColor = SurfaceColor::AsIs);
+
+    // 画面の大きさが変わったとき（全画面の出し入れ）に、大きさに依存するものを作り直す：
+    // スワップチェーンのバッファ・RTV・深度バッファ・ビューポート。
+    // GPUが使い終わってからでないとバッファを手放せないので、先に待つ
+    void Resize(int32_t width, int32_t height);
+
+    // ComPtrで持っていない物（フェンスを待つためのイベント）を閉じる
+    void Finalize();
+
+    // ===== 1フレームの描画 =====
+
+    // 描く前の準備：画面を描き込める状態にし、clearColorで塗りつぶし、深度を消し、
+    // ヒープ・ビューポート・シザーを設定する
+    void PreDraw(const Vector4& clearColor);
+
+    // 描いた後の後始末：画面を表示できる状態に戻して命令を流し、画面へ出し、
+    // GPUが終わるのを待って、次のフレームの命令を積めるようにする
+    void PostDraw();
+
+    // 今のフレームで描いている裏画面の番号（PreDrawからPostDrawの間で使う）
+    UINT CurrentBackBufferIndex() const { return currentBackBuffer_; }
+
+    // 積んだ命令を流して、終わるまで待ち、次の命令を積めるようにする（テクスチャのアップロードなど）
+    void ExecuteCommandsAndWait();
+
+    // コマンドキューに積んだ処理をGPUが完了するまでCPUを待たせる
+    void WaitForGPU();
+
+    // ===== 中身 =====
     ComPtr<IDXGIFactory7> dxgiFactory;
     ComPtr<IDXGIAdapter4> useAdapter;
     ComPtr<ID3D12Device> device;
@@ -59,153 +119,173 @@ struct GraphicsContext {
     // コマンド実行＆フェンス待機の後にまとめて解放する）
     std::vector<ComPtr<ID3D12Resource>> pendingIntermediateResources;
 
-    // コマンドキューに積んだ処理をGPUが完了するまでCPUを待たせる
-    void WaitForGPU() {
-        fenceValue++;
-        commandQueue->Signal(fence.Get(), fenceValue);
-        if (fence->GetCompletedValue() < fenceValue) {
-            fence->SetEventOnCompletion(fenceValue, fenceEvent);
-            WaitForSingleObject(fenceEvent, INFINITE);
-        }
-    }
+private:
+    // 画面（RTV）と深度バッファを、今の大きさで作る（InitializeとResizeの共通部分）
+    void CreateSizeDependentResources(int32_t width, int32_t height);
+
+    // 裏画面の状態を切り替える命令を積む（表示用 ⇔ 描き込み用）
+    void TransitionBackBuffer(D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+
+    UINT currentBackBuffer_ = 0;
 };
 
-// 画面へ書き出すときの色の扱い。
-//
-//   AsIs : 計算した値をそのまま置く。このエンジンが今まで出していた見え方
-//   Srgb : 置くときにsRGBへ直す。同じ数字でも明るく見える
-//
-// 本来はSrgbが筋（絵はsRGBとして読み込み、計算はリニアで行っているので、
-// 出すときに戻すのが対）。ただしAsIsで見た目を決め切ったゲームがすでにあるため、
-// 既定はSrgb（直す）。各PSOは「sRGBで描く」と名乗っているので、
-// 直さないと描き先の形式と食い違い、D3D12のデバッグレイヤーが
-// 毎フレーム「The render target format in slot 0 does not match」と怒る。
-//
-// AsIsを選べるようにしてあるのは、sRGBへ直さないエンジンで作った物を
-// 載せ替えて、そのときと同じ色で出したいときのため。
-// 切り替えると絵の色が全部変わる
-enum class SurfaceColor {
-    AsIs,
-    Srgb,
-};
-
-// GraphicsContext一式を構築する
-inline GraphicsContext CreateGraphicsContext(HWND hwnd, int32_t clientWidth, int32_t clientHeight,
-                                             SurfaceColor surfaceColor = SurfaceColor::AsIs) {
-    GraphicsContext gfx;
-    gfx.clientWidth = clientWidth;
-    gfx.clientHeight = clientHeight;
-
+inline void GraphicsContext::Initialize(HWND hwnd, int32_t width, int32_t height, SurfaceColor surfaceColor) {
     // DXGIファクトリーとアダプターの生成
-    HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&gfx.dxgiFactory));
+    HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
     assert(SUCCEEDED(hr));
 
-    hr = gfx.dxgiFactory->EnumAdapterByGpuPreference(0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&gfx.useAdapter));
+    hr = dxgiFactory->EnumAdapterByGpuPreference(0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&useAdapter));
     assert(SUCCEEDED(hr));
 
     // D3D12デバイスの生成
-    hr = D3D12CreateDevice(gfx.useAdapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&gfx.device));
+    hr = D3D12CreateDevice(useAdapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&device));
     assert(SUCCEEDED(hr));
 
     // コマンド関連リソースの生成
     D3D12_COMMAND_QUEUE_DESC cqDesc{};
-    hr = gfx.device->CreateCommandQueue(&cqDesc, IID_PPV_ARGS(&gfx.commandQueue));
+    hr = device->CreateCommandQueue(&cqDesc, IID_PPV_ARGS(&commandQueue));
     assert(SUCCEEDED(hr));
 
-    hr = gfx.device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&gfx.commandAllocator));
+    hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));
     assert(SUCCEEDED(hr));
 
-    hr = gfx.device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, gfx.commandAllocator.Get(), nullptr, IID_PPV_ARGS(&gfx.commandList));
+    hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator.Get(), nullptr, IID_PPV_ARGS(&commandList));
     assert(SUCCEEDED(hr));
 
     // スワップチェーンの生成
-    gfx.swapChainDesc = {
-        (UINT)clientWidth, (UINT)clientHeight, DXGI_FORMAT_R8G8B8A8_UNORM, FALSE, {1,0},
+    swapChainDesc = {
+        (UINT)width, (UINT)height, DXGI_FORMAT_R8G8B8A8_UNORM, FALSE, {1,0},
         DXGI_USAGE_RENDER_TARGET_OUTPUT, 2, DXGI_SCALING_STRETCH, DXGI_SWAP_EFFECT_FLIP_DISCARD,
         DXGI_ALPHA_MODE_UNSPECIFIED, 0
     };
     // swapChainはComPtr<IDXGISwapChain4>だが、CreateSwapChainForHwndが要求するのはIDXGISwapChain1**なので、
     // GetAddressOf()で取得したComPtr管理下のポインタへのアドレスをreinterpret_castして渡す
-    hr = gfx.dxgiFactory->CreateSwapChainForHwnd(gfx.commandQueue.Get(), hwnd, &gfx.swapChainDesc, nullptr, nullptr,
-        reinterpret_cast<IDXGISwapChain1**>(gfx.swapChain.GetAddressOf()));
+    hr = dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), hwnd, &swapChainDesc, nullptr, nullptr,
+        reinterpret_cast<IDXGISwapChain1**>(swapChain.GetAddressOf()));
     assert(SUCCEEDED(hr));
     // Alt+EnterでDXGIが勝手に排他的フルスクリーンへ切り替えるのを止める。
     // 全画面の出し入れはエンジンが行う（ボーダーレス。Engine::SetFullscreen）
-    gfx.dxgiFactory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
+    dxgiFactory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
 
     // ディスクリプターヒープの生成
-    gfx.rtvDescriptorHeap = CreateDescriptorHeap(gfx.device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2, false);
-    gfx.srvDescriptorHeap = CreateDescriptorHeap(gfx.device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, GraphicsContext::kSrvDescriptorCount, true);
-    gfx.descriptorSizeSRV = gfx.device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    rtvDescriptorHeap = CreateDescriptorHeap(device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2, false);
+    srvDescriptorHeap = CreateDescriptorHeap(device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, kSrvDescriptorCount, true);
+    descriptorSizeSRV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    dsvDescriptorHeap = CreateDescriptorHeap(device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
 
-    // レンダーターゲットビュー（RTV）の作成
-    const UINT descriptorSizeRTV = gfx.device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvStartHandle = gfx.rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-    gfx.rtvHandles[0] = rtvStartHandle;
+    // RTVの置き場所（2枚ぶん）
+    const UINT descriptorSizeRTV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    rtvHandles[0] = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+    rtvHandles[1].ptr = rtvHandles[0].ptr + descriptorSizeRTV;
     // 画面そのものはUNORMで作る（フリップ方式のスワップチェーンはsRGBの形式を受け付けない）。
     // sRGBで出したいときは、同じ物を見る「窓」の側をsRGBにする。
     // 直すのはハードウェアなので、絵を描く側は何も変えなくてよい
-    D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
-    rtvDesc.Format = (surfaceColor == SurfaceColor::Srgb) ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
-                                                          : DXGI_FORMAT_R8G8B8A8_UNORM;
-    gfx.rtvFormat = rtvDesc.Format;
-    rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-    gfx.swapChain->GetBuffer(0, IID_PPV_ARGS(&gfx.swapChainResources[0]));
-    gfx.device->CreateRenderTargetView(gfx.swapChainResources[0].Get(), &rtvDesc, gfx.rtvHandles[0]);
-    gfx.rtvHandles[1].ptr = gfx.rtvHandles[0].ptr + descriptorSizeRTV;
-    gfx.swapChain->GetBuffer(1, IID_PPV_ARGS(&gfx.swapChainResources[1]));
-    gfx.device->CreateRenderTargetView(gfx.swapChainResources[1].Get(), &rtvDesc, gfx.rtvHandles[1]);
+    rtvFormat = (surfaceColor == SurfaceColor::Srgb) ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
 
     // フェンスの作成
-    hr = gfx.device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&gfx.fence));
+    hr = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
     assert(SUCCEEDED(hr));
-    gfx.fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+    fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 
-    // 深度ステンシルリソースとDSVの作成
-    gfx.depthStencilResource = CreateDepthStencilTextureResource(gfx.device.Get(), clientWidth, clientHeight);
-    gfx.dsvDescriptorHeap = CreateDescriptorHeap(gfx.device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
-    D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
-    dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-    gfx.device->CreateDepthStencilView(gfx.depthStencilResource.Get(), &dsvDesc, gfx.dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
-
-    gfx.viewport = { 0, 0, (float)clientWidth, (float)clientHeight, 0.0f, 1.0f };
-    gfx.scissorRect = { 0, 0, clientWidth, clientHeight };
-
-    return gfx;
+    CreateSizeDependentResources(width, height);
 }
 
-// 画面の大きさが変わったとき（全画面の出し入れ）に、大きさに依存するものを作り直す：
-// スワップチェーンのバッファ・RTV・深度バッファ・ビューポート。
-// GPUが使い終わってからでないとバッファを手放せないので、先に待つ
-inline void ResizeGraphicsContext(GraphicsContext& gfx, int32_t clientWidth, int32_t clientHeight) {
-    if (clientWidth <= 0 || clientHeight <= 0) { return; } // 最小化中など
-    gfx.WaitForGPU();
+inline void GraphicsContext::Resize(int32_t width, int32_t height) {
+    if (width <= 0 || height <= 0) { return; } // 最小化中など
+    WaitForGPU();
 
-    gfx.swapChainResources[0].Reset();
-    gfx.swapChainResources[1].Reset();
-    HRESULT hr = gfx.swapChain->ResizeBuffers(0, (UINT)clientWidth, (UINT)clientHeight, DXGI_FORMAT_UNKNOWN, 0);
+    swapChainResources[0].Reset();
+    swapChainResources[1].Reset();
+    HRESULT hr = swapChain->ResizeBuffers(0, (UINT)width, (UINT)height, DXGI_FORMAT_UNKNOWN, 0);
     assert(SUCCEEDED(hr));
 
+    CreateSizeDependentResources(width, height);
+}
+
+inline void GraphicsContext::CreateSizeDependentResources(int32_t width, int32_t height) {
+    // レンダーターゲットビュー（RTV）
     D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
-    rtvDesc.Format = gfx.rtvFormat;
+    rtvDesc.Format = rtvFormat;
     rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
     for (UINT i = 0; i < 2; ++i) {
-        gfx.swapChain->GetBuffer(i, IID_PPV_ARGS(&gfx.swapChainResources[i]));
-        gfx.device->CreateRenderTargetView(gfx.swapChainResources[i].Get(), &rtvDesc, gfx.rtvHandles[i]);
+        swapChain->GetBuffer(i, IID_PPV_ARGS(&swapChainResources[i]));
+        device->CreateRenderTargetView(swapChainResources[i].Get(), &rtvDesc, rtvHandles[i]);
     }
 
-    gfx.depthStencilResource = CreateDepthStencilTextureResource(gfx.device.Get(), clientWidth, clientHeight);
+    // 深度ステンシルリソースとDSV
+    depthStencilResource = CreateDepthStencilTextureResource(device.Get(), width, height);
     D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
     dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
     dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-    gfx.device->CreateDepthStencilView(gfx.depthStencilResource.Get(), &dsvDesc, gfx.dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+    device->CreateDepthStencilView(depthStencilResource.Get(), &dsvDesc, dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-    gfx.clientWidth = clientWidth;
-    gfx.clientHeight = clientHeight;
-    gfx.viewport = { 0, 0, (float)clientWidth, (float)clientHeight, 0.0f, 1.0f };
-    gfx.scissorRect = { 0, 0, clientWidth, clientHeight };
+    clientWidth = width;
+    clientHeight = height;
+    viewport = { 0, 0, (float)width, (float)height, 0.0f, 1.0f };
+    scissorRect = { 0, 0, width, height };
 }
+
+inline void GraphicsContext::Finalize() {
+    if (fenceEvent) { CloseHandle(fenceEvent); fenceEvent = nullptr; }
+}
+
+inline void GraphicsContext::TransitionBackBuffer(D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = swapChainResources[currentBackBuffer_].Get();
+    barrier.Transition.StateBefore = before;
+    barrier.Transition.StateAfter = after;
+    commandList->ResourceBarrier(1, &barrier);
+}
+
+inline void GraphicsContext::PreDraw(const Vector4& clearColor) {
+    currentBackBuffer_ = swapChain->GetCurrentBackBufferIndex();
+    TransitionBackBuffer(D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv = rtvHandles[currentBackBuffer_];
+    commandList->OMSetRenderTargets(1, &rtv, false, &dsvHandle);
+    commandList->ClearRenderTargetView(rtv, &clearColor.x, 0, nullptr);
+    commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+    ID3D12DescriptorHeap* heaps[] = { srvDescriptorHeap.Get() };
+    commandList->SetDescriptorHeaps(1, heaps);
+    commandList->RSSetViewports(1, &viewport);
+    commandList->RSSetScissorRects(1, &scissorRect);
+}
+
+inline void GraphicsContext::PostDraw() {
+    TransitionBackBuffer(D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+    commandList->Close();
+    ID3D12CommandList* lists[] = { commandList.Get() };
+    commandQueue->ExecuteCommandLists(1, lists);
+    swapChain->Present(1, 0);
+
+    WaitForGPU();
+    commandAllocator->Reset();
+    commandList->Reset(commandAllocator.Get(), nullptr);
+    // テクスチャのアップロードに使った中間リソースは、GPUが写し終えたここで手放せる
+    pendingIntermediateResources.clear();
+}
+
+inline void GraphicsContext::ExecuteCommandsAndWait() {
+    commandList->Close();
+    ID3D12CommandList* lists[] = { commandList.Get() };
+    commandQueue->ExecuteCommandLists(1, lists);
+    WaitForGPU();
+    commandAllocator->Reset();
+    commandList->Reset(commandAllocator.Get(), nullptr);
+}
+
+inline void GraphicsContext::WaitForGPU() {
+    fenceValue++;
+    commandQueue->Signal(fence.Get(), fenceValue);
+    if (fence->GetCompletedValue() < fenceValue) {
+        fence->SetEventOnCompletion(fenceValue, fenceEvent);
+        WaitForSingleObject(fenceEvent, INFINITE);
+    }
+}
+
 
 // Object3D描画用のシェーダー・ルートシグネチャ・PSO一式
 struct Object3DPipeline {
@@ -666,12 +746,7 @@ inline DefaultTextures LoadDefaultTextures(GraphicsContext& gfx) {
         CreateWhiteImage(), textures.whiteResource, intermediateResources);
 
     // このままではアップロード用中間リソースがGPU転送完了前に破棄されうるので、コマンドを実行してGPU完了を待つ
-    gfx.commandList->Close();
-    ID3D12CommandList* lists[] = { gfx.commandList.Get() };
-    gfx.commandQueue->ExecuteCommandLists(1, lists);
-    gfx.WaitForGPU();
-    gfx.commandAllocator->Reset();
-    gfx.commandList->Reset(gfx.commandAllocator.Get(), nullptr);
+    gfx.ExecuteCommandsAndWait();
     // ここでintermediateResourcesがスコープを抜けて自動的に解放される
 
     return textures;

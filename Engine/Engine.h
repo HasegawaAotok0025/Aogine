@@ -50,7 +50,7 @@ public:
 #ifdef _DEBUG
         EnableDebugLayer();
 #endif
-        gfx_ = CreateGraphicsContext(hwnd_, clientWidth, clientHeight, surfaceColor);
+        gfx_.Initialize(hwnd_, clientWidth, clientHeight, surfaceColor);
         pipeline_ = CreateObject3DPipeline(gfx_.device.Get());
         linePipeline_ = CreateLinePipeline(gfx_.device.Get(), pipeline_);
         shadowPipeline_ = CreateShadowPipeline(gfx_.device.Get(), pipeline_);
@@ -253,7 +253,7 @@ public:
         // 実際の描画領域の大きさに合わせて、大きさに依存するものを作り直す
         RECT client{};
         GetClientRect(hwnd_, &client);
-        ResizeGraphicsContext(gfx_, client.right - client.left, client.bottom - client.top);
+        gfx_.Resize(client.right - client.left, client.bottom - client.top);
         camera_.SetAspectRatio(ViewAspect());
         debugCamera_.SetAspectRatio(ViewAspect());
     }
@@ -768,7 +768,7 @@ public:
         input_->Finalize();
         input_.reset();
         text_.Finalize(); // GDIのフォントハンドルを解放する
-        if (gfx_.fenceEvent) { CloseHandle(gfx_.fenceEvent); gfx_.fenceEvent = nullptr; }
+        gfx_.Finalize();
         // COMの終了は最後（WIC・XAudio2などがCOMを使い終わってから）
         winApp_->Finalize();
         winApp_.reset();
@@ -1399,29 +1399,11 @@ private:
         return true;
     }
 
-    // 1フレーム分の描画（クリア〜Present〜GPU待機まで）
+    // 1フレーム分の描画。前処理（PreDraw）と後処理（PostDraw）はGraphicsContextが受け持ち、
+    // ここではその間に、何をどの順で描くかだけを書く
     void RenderFrame() {
-        UINT backBufferIndex = gfx_.swapChain->GetCurrentBackBufferIndex();
-
-        D3D12_RESOURCE_BARRIER barrier{};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = gfx_.swapChainResources[backBufferIndex].Get();
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        gfx_.commandList->ResourceBarrier(1, &barrier);
-
-        D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = gfx_.dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-        D3D12_CPU_DESCRIPTOR_HANDLE sceneRtv = gfx_.rtvHandles[backBufferIndex];
-
-        gfx_.commandList->OMSetRenderTargets(1, &sceneRtv, false, &dsvHandle);
-        // 何も描いていない所の色。ゲームから変えられる（SetClearColor）
-        gfx_.commandList->ClearRenderTargetView(sceneRtv, &clearColor_.x, 0, nullptr);
-        gfx_.commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
-        ID3D12DescriptorHeap* heaps[] = { gfx_.srvDescriptorHeap.Get() };
-        gfx_.commandList->SetDescriptorHeaps(1, heaps);
-        gfx_.commandList->RSSetViewports(1, &gfx_.viewport);
-        gfx_.commandList->RSSetScissorRects(1, &gfx_.scissorRect);
+        // 何も描いていない所の色はゲームから変えられる（SetClearColor）
+        gfx_.PreDraw(clearColor_);
         RestoreObjectPipeline();
 
         Matrix4x4 cameraVP = ViewCamera().GetViewProjectionMatrix(); // デバッグビュー中はデバッグ用カメラから見る
@@ -1497,25 +1479,11 @@ private:
 #endif
 
         // 撮るのはここ。実際に出ている絵をそのまま読み戻す
-        if (screenshotRequested_) { screenshotRequested_ = false; CopyBackBufferForScreenshot(backBufferIndex); }
+        if (screenshotRequested_) { screenshotRequested_ = false; CopyBackBufferForScreenshot(gfx_.CurrentBackBufferIndex()); }
 
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-        gfx_.commandList->ResourceBarrier(1, &barrier);
-        gfx_.commandList->Close();
-
-        ID3D12CommandList* lists[] = { gfx_.commandList.Get() };
-        gfx_.commandQueue->ExecuteCommandLists(1, lists);
-        gfx_.swapChain->Present(1, 0);
-
-        gfx_.WaitForGPU();
+        gfx_.PostDraw();
         // GPUが写し終えた後でないと読めない
         SaveScreenshotFile();
-        gfx_.commandAllocator->Reset();
-        gfx_.commandList->Reset(gfx_.commandAllocator.Get(), nullptr);
-
-        // OBJ読み込みでテクスチャをアップロードしていた場合、GPU転送完了後のここで中間リソースを解放する
-        if (!gfx_.pendingIntermediateResources.empty()) { gfx_.pendingIntermediateResources.clear(); }
     }
 
     // ===== 画面を撮る（F12）=====
