@@ -1,0 +1,33 @@
+# main への push と pull request のたびに、クラウド（GitHub のWindowsマシン）で全構成をビルドする。
+# 手元では通るのに他の環境で通らない（ファイルの登録漏れ・絶対パス・警告）を、push した時点で見つけるため
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  # GitHubのActionsタブから手動でも実行できるようにする
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.configuration }}
+    runs-on: windows-latest
+    strategy:
+      # 1つの構成が落ちても、他の構成の結果は最後まで見る
+      fail-fast: false
+      matrix:
+        configuration: [ Debug, Development, Release ]
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: MSBuild を使えるようにする
+        uses: microsoft/setup-msbuild@v2
+
+      # ツールセットは Aogine.vcxproj が「そのマシンの Visual Studio の既定」を使うので、指定しない。
+      # DirectXTex は Aogine のビルドの中で一緒に組まれる
+      - name: ビルド（${{ matrix.configuration }}）
+        run: msbuild Aogine.slnx /p:Configuration=${{ matrix.configuration }} /p:Platform=x64 /m /nologo /v:minimal

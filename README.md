@@ -60,9 +60,9 @@ Debug ビルドで起動中に **F2** を押すと、ゲームを止めて Unity
 - `.cpp` を足したら、ソリューション エクスプローラーの `Game` フォルダへ「追加」する（`Aogine.vcxproj` に登録される）
 - ソースは **BOM無しの UTF-8** で保存する（日本語の文字列が化けないように）
 - 警告はエラー扱い（`/WX`）。警告ゼロでコミットする
-- `x64/`・`.vs/`・`logs/`・`screenshots/`・`saved_edits.txt`・`saved_particles.txt` はコミットしない（`.gitignore` 済み。`saved_*.txt` は F2 で調整した内容で、手元だけに残る）
+- `generated/`（ビルドの出力と中間ファイル）・`.vs/`・`logs/`・`screenshots/`・`saved_edits.txt`・`saved_particles.txt` はコミットしない（`.gitignore` 済み。`saved_*.txt` は F2 で調整した内容で、手元だけに残る）
 
 ## 提出用（Release）
 
-Release でビルドし、`x64/Release/Aogine.exe` と `dxcompiler.dll`・`dxil.dll`、
+Release でビルドし、`generated/outputs/Release/` にできる `Aogine.exe`・`dxcompiler.dll`・`dxil.dll` と、
 リポジトリ直下の `*.hlsl`・`*.hlsli`、`resources/` を同じフォルダに並べれば動く。

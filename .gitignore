@@ -404,3 +404,6 @@ resources/*.png
 # デバッグビュー（F2）で変えた内容。実行時に書き出される手元用のファイルなのでコミットしない
 saved_edits.txt
 saved_particles.txt
+
+# ビルドの出力と中間ファイル（Aogine.vcxproj の OutDir / IntDir）
+/generated/
