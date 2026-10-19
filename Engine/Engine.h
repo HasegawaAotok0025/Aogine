@@ -68,9 +68,10 @@ public:
                                                                         : DXGI_FORMAT_R8G8B8A8_UNORM);
         imguiInitialized_ = true;
 #endif
-        input_.Initialize(hwnd_);
-        camera_.Initialize((float)clientWidth / (float)clientHeight, &input_);
-        debugCamera_.Initialize((float)clientWidth / (float)clientHeight, &input_);
+        input_ = new InputEngine();
+        input_->Initialize(hwnd_);
+        camera_.Initialize((float)clientWidth / (float)clientHeight, input_);
+        debugCamera_.Initialize((float)clientWidth / (float)clientHeight, input_);
         debugCamera_.SetFreeMove(true, true); // 右ボタンを押している間だけ飛べる（Unityと同じ）
         draw2DTriangleMesh_ = CreateDraw2DCircleMesh(gfx_.device.Get(), 3); // ギズモの矢じり
         audio_.Initialize();
@@ -141,7 +142,7 @@ public:
 
     // キーボード入力（DirectInput）。ゲームロジックから直接キーを見たいときに使う
     // 例：if (engine.Input().IsKeyDown(DIK_R)) { /* リスタート */ }
-    InputEngine& Input() { return input_; }
+    InputEngine& Input() { return *input_; }
 
     // ===== 窓の実際の大きさと handle =====
     //
@@ -418,7 +419,7 @@ public:
     }
     // 今のマウス位置から伸びるレイ
     bool MouseRay(Vector3& outOrigin, Vector3& outDirection) {
-        return ComputeMouseRay(input_.MousePosition(), outOrigin, outDirection);
+        return ComputeMouseRay(input_->MousePosition(), outOrigin, outDirection);
     }
 
     // レイを飛ばして、一番手前で当たったオブジェクトを返す（当たり判定の箱で調べる）。
@@ -640,20 +641,20 @@ public:
             totalTime_ += frameTime;
             float scaledTime = frameTime * timeScale_;
 
-            input_.Update();
+            input_->Update();
             audio_.Update();     // 鳴り終わった効果音の後始末（溜め続けると鳴らなくなる）
-            if (screenshotKeyEnabled_ && input_.IsWindowActive() && input_.IsKeyTriggered(DIK_F12)) {
+            if (screenshotKeyEnabled_ && input_->IsWindowActive() && input_->IsKeyTriggered(DIK_F12)) {
                 RequestScreenshot();
             }
             // 全画面の出し入れ（F11 / Alt+Enter）
-            if (input_.IsWindowActive()) {
-                bool altEnter = input_.IsKeyTriggered(DIK_RETURN) && (input_.IsKeyDown(DIK_LMENU) || input_.IsKeyDown(DIK_RMENU));
-                if (input_.IsKeyTriggered(DIK_F11) || altEnter) { ToggleFullscreen(); }
+            if (input_->IsWindowActive()) {
+                bool altEnter = input_->IsKeyTriggered(DIK_RETURN) && (input_->IsKeyDown(DIK_LMENU) || input_->IsKeyDown(DIK_RMENU));
+                if (input_->IsKeyTriggered(DIK_F11) || altEnter) { ToggleFullscreen(); }
             }
             camera2D_.Update(frameTime); // 2Dカメラの揺れを減らす
 
             // --- デバッグビュー（F2）の出し入れ ---
-            if (debugViewEnabled_ && input_.IsWindowActive() && input_.IsKeyTriggered(DIK_F2)) {
+            if (debugViewEnabled_ && input_->IsWindowActive() && input_->IsKeyTriggered(DIK_F2)) {
                 SetDebugViewActive(!debugViewActive_);
             }
 
@@ -723,7 +724,9 @@ public:
 #endif
         sounds_.UnloadAll(audio_);
         audio_.Finalize();
-        input_.Finalize();
+        input_->Finalize();
+        delete input_;
+        input_ = nullptr;
         text_.Finalize(); // GDIのフォントハンドルを解放する
         if (gfx_.fenceEvent) { CloseHandle(gfx_.fenceEvent); gfx_.fenceEvent = nullptr; }
         CoUninitialize();
@@ -791,7 +794,7 @@ private:
     Camera camera_;
     AudioEngine audio_;
     SoundBank sounds_;                // 名前で引ける音の置き場（中身はゲームが登録する）
-    InputEngine input_;
+    InputEngine* input_ = nullptr; // Initializeでnew、Shutdownでdelete
     std::vector<Object3D> objects_;
     std::unordered_map<std::string, CachedModelData> modelCache_; // キー："フォルダ/ファイル名"（複数部品なら末尾に"#部品名"）
     // "フォルダ/ファイル名" → そのファイルから作られた部品の見出し一覧
@@ -906,8 +909,8 @@ private:
         Object3D* selected = FindObjectById(debugSelectedId_);
         if (!selected) { debugSelectedId_ = 0; }
 
-        bool windowActive = input_.IsWindowActive();
-        bool flying = input_.IsMouseDown(MouseButton::Right); // 右ボタン中のキーは視点の移動に使う
+        bool windowActive = input_->IsWindowActive();
+        bool flying = input_->IsMouseDown(MouseButton::Right); // 右ボタン中のキーは視点の移動に使う
 
         // ImGuiのパネルを操作中は、マウスもキーもパネルのもの（数値を打った文字がツール切り替えに化けない／
         // パネルをクリックしても背後の物を選ばない）。掴んでいる最中は、途中で奪わない
@@ -919,27 +922,27 @@ private:
 
         // ツールの切り替え（UnityのW/E/R）と、選んだ物へ寄る（F）
         if (windowActive && !flying && gizmoDragAxis_ < 0 && !uiKeyboard) {
-            if (input_.IsKeyTriggered(DIK_W)) { gizmoTool_ = GizmoTool::Move; }
-            if (input_.IsKeyTriggered(DIK_E)) { gizmoTool_ = GizmoTool::Rotate; }
-            if (input_.IsKeyTriggered(DIK_R)) { gizmoTool_ = GizmoTool::Scale; }
-            if (input_.IsKeyTriggered(DIK_F) && selected) { FocusDebugCamera(*selected); }
+            if (input_->IsKeyTriggered(DIK_W)) { gizmoTool_ = GizmoTool::Move; }
+            if (input_->IsKeyTriggered(DIK_E)) { gizmoTool_ = GizmoTool::Rotate; }
+            if (input_->IsKeyTriggered(DIK_R)) { gizmoTool_ = GizmoTool::Scale; }
+            if (input_->IsKeyTriggered(DIK_F) && selected) { FocusDebugCamera(*selected); }
         }
 
         Vector3 rayOrigin{}, rayDir{};
-        bool hasRay = ComputeMouseRay(input_.MousePosition(), rayOrigin, rayDir);
+        bool hasRay = ComputeMouseRay(input_->MousePosition(), rayOrigin, rayDir);
 
         // 掴んでいる最中
         if (gizmoDragAxis_ >= 0) {
-            if (!selected || !input_.IsMouseDown(MouseButton::Left)) { gizmoDragAxis_ = -1; return; }
+            if (!selected || !input_->IsMouseDown(MouseButton::Left)) { gizmoDragAxis_ = -1; return; }
             if (hasRay) { ApplyGizmoDrag(*selected, rayOrigin, rayDir); }
             return;
         }
 
-        POINT mouse = input_.MousePosition();
+        POINT mouse = input_->MousePosition();
         gizmoHoverAxis_ = (selected && !flying && windowActive && !uiMouse)
             ? PickGizmoAxis(*selected, { (float)mouse.x, (float)mouse.y }) : -1;
 
-        if (windowActive && !flying && !uiMouse && input_.IsMouseTriggered(MouseButton::Left) && hasRay) {
+        if (windowActive && !flying && !uiMouse && input_->IsMouseTriggered(MouseButton::Left) && hasRay) {
             if (selected && gizmoHoverAxis_ >= 0) {
                 BeginGizmoDrag(*selected, gizmoHoverAxis_, rayOrigin, rayDir);
             } else {
@@ -1041,7 +1044,7 @@ private:
     void ApplyGizmoDrag(Object3D& obj, const Vector3& rayOrigin, const Vector3& rayDir) {
         const int axis = gizmoDragAxis_;
         const Vector3& dir = Gizmo::kAxis[axis];
-        bool snap = input_.IsKeyDown(DIK_LCONTROL) || input_.IsKeyDown(DIK_RCONTROL);
+        bool snap = input_->IsKeyDown(DIK_LCONTROL) || input_->IsKeyDown(DIK_RCONTROL);
 
         switch (gizmoTool_) {
         case GizmoTool::Move: {
