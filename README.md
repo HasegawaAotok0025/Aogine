@@ -34,15 +34,17 @@ Debug ビルドでは、F2 のデバッグビューで置いた物の位置や�
 ## 書き方の最小形
 
 ```cpp
-void SetupScene(Engine& engine) {
-    Object3D& box = engine.AddCube();
-    uint32_t boxId = box.id;          // 参照は使い回さず、idで控える
+// Game/Game.cpp
+void Game::Initialize(Engine& engine) {
+    engine_ = &engine;
+    boxId_ = engine.AddCube().id;     // 参照は使い回さず、idで控える
+    engine.SetUpdateCallback([this](float dt) { Update(dt); });
+}
 
-    engine.SetUpdateCallback([&engine, boxId](float dt) {
-        if (Object3D* b = engine.FindById(boxId)) {
-            if (engine.Input().IsKeyDown(DIK_D)) { b->transform.translate.x += 3.0f * dt; }
-        }
-    });
+void Game::Update(float dt) {
+    if (Object3D* box = engine_->FindById(boxId_)) {
+        if (engine_->Input().IsKeyDown(DIK_D)) { box->transform.translate.x += 3.0f * dt; }
+    }
 }
 ```
 

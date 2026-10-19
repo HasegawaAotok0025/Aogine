@@ -1,25 +1,19 @@
-#include "../App.h"
+#include "Game.h"
 #include "../Engine/Engine.h"
 #include "Player.h"
-#include <memory>
 
-// ============================================================================
-// ゲームの入口。ここから書き始める。
-//
-// 今入っているのは、エンジンの使い方を見せるための小さな見本：
-//   床・半透明の箱・Instancingで並べた板・火のようなパーティクル・
-//   Mキーで形が切り替わるモデル・絵の一部を切り取ったアイコン
-// 作り始めるときは、中身を消して自分のものに置き換えてよい。
-//
-// 使える関数の一覧は 開発README.md を参照。
-// ============================================================================
+Game::Game() = default;
+Game::~Game() = default;
 
+AppStartup Game::GetStartup() const {
+    AppStartup startup; // 既定値は App.h（題 "Aogine"・窓で起動・sRGBへ直す）
+    // 変えたいものだけここで上書きする。例：startup.fullscreen = true;
+    return startup;
+}
 
+void Game::Initialize(Engine& engine) {
+    engine_ = &engine;
 
-// キーで動かす箱。SetupSceneで作り、FinalizeSceneで片付ける
-static std::unique_ptr<Player> player;
-
-void SetupScene(Engine& engine) {
     // --- カメラ ---
     engine.GetCamera().SetPosition({ 0.0f, 6.0f, -12.0f });
     engine.GetCamera().LookAt({ 0.0f, 0.0f, 0.0f });
@@ -78,36 +72,35 @@ void SetupScene(Engine& engine) {
     }
 
     // --- キーで動かす箱（Player）---
-    player = std::make_unique<Player>();
-    player->Initialize(engine, { 0.0f, 2.0f, -2.0f });
+    player_ = std::make_unique<Player>();
+    player_->Initialize(engine, { 0.0f, 2.0f, -2.0f });
 
     // --- モデルの差し替えの見本：Mキーで、スザンヌとUVチェッカーの形を切り替える ---
     // 参照ではなくidで控える（物が増えると参照は古い場所を指すため）
-    const uint32_t modelId = engine.AddModel("resources/SuzannuObj", "suzannu.obj").id;
-    if (Object3D* model = engine.FindById(modelId)) { model->transform.translate = { -3.0f, 1.0f, 0.0f }; }
+    modelId_ = engine.AddModel("resources/SuzannuObj", "suzannu.obj").id;
+    if (Object3D* model = engine.FindById(modelId_)) { model->transform.translate = { -3.0f, 1.0f, 0.0f }; }
 
-    engine.SetUpdateCallback([&engine, modelId, showingSuzanne = true](float deltaTime) mutable {
-        player->Update(deltaTime);
-
-        if (engine.Input().IsKeyTriggered(DIK_M)) {
-            showingSuzanne = !showingSuzanne;
-            if (showingSuzanne) { engine.SetModel(modelId, "resources/SuzannuObj", "suzannu.obj"); }
-            else { engine.SetModel(modelId, "resources/UVCheckObj", "UVChecker.obj"); }
-        }
-
-        // --- 絵の切り取りの見本：512x512の絵の左上4分の1（256x256）だけを、右上に小さく出す ---
-        engine.HudSprite2DRegion("resources/uvChecker.png", 1170.0f, 110.0f, 0.0f, 0.0f, 256.0f, 256.0f,
-                                 0.0f, Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.5f);
-        engine.DrawText(Engine::kUiMarginX, Engine::kUiMarginY, "[WASD] 移動  [Space] ジャンプ  [M] モデルを切り替える", 20.0f);
-    });
+    // 毎フレームの処理はこのクラスのUpdateに任せる
+    engine.SetUpdateCallback([this](float deltaTime) { Update(deltaTime); });
 }
 
-void FinalizeScene() {
-    player.reset();
+void Game::Update(float deltaTime) {
+    Engine& engine = *engine_;
+    player_->Update(deltaTime);
+
+    if (engine.Input().IsKeyTriggered(DIK_M)) {
+        showingSuzanne_ = !showingSuzanne_;
+        if (showingSuzanne_) { engine.SetModel(modelId_, "resources/SuzannuObj", "suzannu.obj"); }
+        else { engine.SetModel(modelId_, "resources/UVCheckObj", "UVChecker.obj"); }
+    }
+
+    // --- 絵の切り取りの見本：512x512の絵の左上4分の1（256x256）だけを、右上に小さく出す ---
+    engine.HudSprite2DRegion("resources/uvChecker.png", 1170.0f, 110.0f, 0.0f, 0.0f, 256.0f, 256.0f,
+                             0.0f, Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }, 0.5f);
+    engine.DrawText(Engine::kUiMarginX, Engine::kUiMarginY, "[WASD] 移動  [Space] ジャンプ  [M] モデルを切り替える", 20.0f);
 }
 
-AppStartup GetAppStartup() {
-    AppStartup startup; // 既定値は App.h（題 "Aogine"・窓で起動・sRGBへ直す）
-    // 変えたいものだけここで上書きする。例：startup.fullscreen = true;
-    return startup;
+void Game::Finalize() {
+    player_.reset();
+    engine_ = nullptr;
 }

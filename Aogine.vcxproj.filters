@@ -52,6 +52,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h"><Filter>Game</Filter></ClInclude>
+    <ClInclude Include="Game\Game.h"><Filter>Game</Filter></ClInclude>
     <ClInclude Include="Game\Player.h"><Filter>Game</Filter></ClInclude>
     <ClInclude Include="Engine\Engine.h"><Filter>Engine</Filter></ClInclude>
     <ClInclude Include="Engine\Core\AudioEngine.h"><Filter>Engine\Core</Filter></ClInclude>

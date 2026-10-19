@@ -2,9 +2,9 @@
 <!-- Aogine
 
      Engine\  エンジン（DirectX12・入力・音・物理・部品）。ゲームを作る人は基本的に触らない
-     Game\    ゲームのコード。入口は Game\Game.cpp（SetupScene / GetAppStartup）
+     Game\    ゲームのコード。入口は Game\Game.h の Game クラス
 
-     エディタ（ImGui）は入っていない。すべてコードで書く。
+     置く物も動きもコードで書く（Debug では F2 のデバッグビューで調整できる）。
      .cpp を足したら、下の ClCompile に1行足すこと（ソリューション エクスプローラーから
      「追加」すれば自動で足される） -->
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
@@ -58,6 +58,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
+    <ClInclude Include="Game\Game.h" />
     <ClInclude Include="Game\Player.h" />
     <ClInclude Include="Engine\Engine.h" />
     <ClInclude Include="Engine\Core\AudioEngine.h" />

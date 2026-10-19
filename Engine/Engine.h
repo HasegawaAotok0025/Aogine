@@ -657,7 +657,7 @@ public:
         const float kMaxAccumulatedTime = 0.20f;
         float physicsAccumulator = 0.0f;
 
-        // 前回デバッグビューで変えた内容を、コードで作った物へ重ねる（SetupSceneのあと）
+        // 前回デバッグビューで変えた内容を、コードで作った物へ重ねる（Game::Initializeのあと）
         particles_.LoadSaved();
         savedEdits_ = LoadObjectEdits();
         {

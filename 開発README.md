@@ -23,26 +23,30 @@
 
 ```
 main.cpp
- ├ GetAppStartup()        … 窓の題・全画面かどうか（Game/Game.cpp）
+ ├ game.GetStartup()      … 窓の題・全画面かどうか（Game/Game.cpp）
  ├ engine.Initialize()
- ├ SetupScene(engine)     … 最初に1回。物を置き、コールバックを登録する（Game/Game.cpp）
- └ engine.Run()           … 窓が閉じるまで毎フレーム：
-      入力 → 物理(1/60秒刻み・衝突を通知) → 部品の更新 → SetUpdateCallback
-      → Destroyの実行 → カメラ確定 → 描画
+ ├ game.Initialize(engine) … 最初に1回。物を置き、毎フレームの処理（Game::Update）を登録する
+ ├ engine.Run()           … 窓が閉じるまで毎フレーム：
+ │    入力 → 物理(1/60秒刻み・衝突を通知) → 部品の更新 → Game::Update（SetUpdateCallback）
+ │    → Destroyの実行 → カメラ確定 → 描画
+ ├ game.Finalize()        … 終わる直前に1回。ゲームが作った物を片付ける
+ └ engine.Shutdown()
 ```
 
 座標系：**Y が上**。長さの単位はメートルのつもりで扱う（重力 -9.8）。角度はラジアン。
 
 ---
 
-## 2. 入口（App.h）
+## 2. 入口（Game クラス）
 
-ゲーム側（`Game/Game.cpp`）で2つを実装する。
+ゲームは `Game/Game.h` の `Game` クラスに書く。`main.cpp` が作り、エンジンの前後で呼ぶ。
 
 | 関数 | 役目 |
 |---|---|
-| `void SetupScene(Engine& engine)` | 起動直後に1回。物を置き、`SetUpdateCallback` などを登録する |
-| `AppStartup GetAppStartup()` | 起動設定を返す |
+| `AppStartup GetStartup() const` | 起動設定を返す（エンジンを作る前に1回） |
+| `void Initialize(Engine& engine)` | 起動直後に1回。物を置き、`SetUpdateCallback` で `Update` を登録する |
+| `void Update(float deltaTime)` | 毎フレーム。物理・部品の更新の後、描画の前 |
+| `void Finalize()` | 終わる直前に1回。ゲームが自分で作った物を片付ける |
 
 `AppStartup` の項目：
 
