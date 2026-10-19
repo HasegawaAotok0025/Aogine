@@ -6,6 +6,10 @@
       <UniqueIdentifier>{5a1c2e7b-0d44-4c3a-9e61-7b2f8d0c1a01}</UniqueIdentifier>
       <Extensions>cpp;h</Extensions>
     </Filter>
+    <Filter Include="Game\Scene">
+      <UniqueIdentifier>{5a1c2e7b-0d44-4c3a-9e61-7b2f8d0c1a20}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
     <Filter Include="Engine">
       <UniqueIdentifier>{5a1c2e7b-0d44-4c3a-9e61-7b2f8d0c1a02}</UniqueIdentifier>
     </Filter>
@@ -42,6 +46,9 @@
   <ItemGroup>
     <ClCompile Include="Game\Game.cpp"><Filter>Game</Filter></ClCompile>
     <ClCompile Include="Game\Player.cpp"><Filter>Game</Filter></ClCompile>
+    <ClCompile Include="Game\Scene\SceneManager.cpp"><Filter>Game\Scene</Filter></ClCompile>
+    <ClCompile Include="Game\Scene\TitleScene.cpp"><Filter>Game\Scene</Filter></ClCompile>
+    <ClCompile Include="Game\Scene\GamePlayScene.cpp"><Filter>Game\Scene</Filter></ClCompile>
     <ClCompile Include="main.cpp"><Filter>Engine</Filter></ClCompile>
     <ClCompile Include="Engine\Core\AudioEngine.cpp"><Filter>Engine\Core</Filter></ClCompile>
     <ClCompile Include="Engine\Core\InputEngine.cpp"><Filter>Engine\Core</Filter></ClCompile>
@@ -54,6 +61,10 @@
     <ClInclude Include="App.h"><Filter>Game</Filter></ClInclude>
     <ClInclude Include="Game\Game.h"><Filter>Game</Filter></ClInclude>
     <ClInclude Include="Game\Player.h"><Filter>Game</Filter></ClInclude>
+    <ClInclude Include="Game\Scene\BaseScene.h"><Filter>Game\Scene</Filter></ClInclude>
+    <ClInclude Include="Game\Scene\SceneManager.h"><Filter>Game\Scene</Filter></ClInclude>
+    <ClInclude Include="Game\Scene\TitleScene.h"><Filter>Game\Scene</Filter></ClInclude>
+    <ClInclude Include="Game\Scene\GamePlayScene.h"><Filter>Game\Scene</Filter></ClInclude>
     <ClInclude Include="Engine\Engine.h"><Filter>Engine</Filter></ClInclude>
     <ClInclude Include="Engine\Core\AudioEngine.h"><Filter>Engine\Core</Filter></ClInclude>
     <ClInclude Include="Engine\Core\InputEngine.h"><Filter>Engine\Core</Filter></ClInclude>

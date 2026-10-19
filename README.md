@@ -33,17 +33,21 @@ Debug ビルドでは、F2 のデバッグビューで置いた物の位置や�
 
 ## 書き方の最小形
 
+ゲームは場面（`Game/Scene/`）ごとに、`BaseScene` を継承して書く。
+
 ```cpp
-// Game/Game.cpp
-void Game::Initialize(Engine& engine) {
+// Game/Scene/MyScene.cpp（MySceneはBaseSceneを継承し、engine_ と boxId_ を持つ）
+void MyScene::Initialize(Engine& engine) {
     engine_ = &engine;
     boxId_ = engine.AddCube().id;     // 参照は使い回さず、idで控える
-    engine.SetUpdateCallback([this](float dt) { Update(dt); });
 }
 
-void Game::Update(float dt) {
+void MyScene::Update(float dt) {
     if (Object3D* box = engine_->FindById(boxId_)) {
         if (engine_->Input().IsKeyDown(DIK_D)) { box->transform.translate.x += 3.0f * dt; }
+    }
+    if (engine_->Input().IsKeyTriggered(DIK_ESCAPE)) {
+        sceneManager_->ChangeScene(std::make_unique<TitleScene>()); // 次のフレームで切り替わる
     }
 }
 ```

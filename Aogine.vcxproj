@@ -26,6 +26,9 @@
     <!-- ゲーム -->
     <ClCompile Include="Game\Game.cpp" />
     <ClCompile Include="Game\Player.cpp" />
+    <ClCompile Include="Game\Scene\SceneManager.cpp" />
+    <ClCompile Include="Game\Scene\TitleScene.cpp" />
+    <ClCompile Include="Game\Scene\GamePlayScene.cpp" />
     <ClCompile Include="main.cpp" />
     <!-- エンジン -->
     <!-- Developmentではプロジェクト全体の最適化を切り、重いエンジン層のこれらだけ個別に /O2 で最適化する -->
@@ -60,6 +63,10 @@
     <ClInclude Include="App.h" />
     <ClInclude Include="Game\Game.h" />
     <ClInclude Include="Game\Player.h" />
+    <ClInclude Include="Game\Scene\BaseScene.h" />
+    <ClInclude Include="Game\Scene\SceneManager.h" />
+    <ClInclude Include="Game\Scene\TitleScene.h" />
+    <ClInclude Include="Game\Scene\GamePlayScene.h" />
     <ClInclude Include="Engine\Engine.h" />
     <ClInclude Include="Engine\Core\AudioEngine.h" />
     <ClInclude Include="Engine\Core\InputEngine.h" />

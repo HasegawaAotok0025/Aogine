@@ -293,6 +293,8 @@ public:
 
     // 出ている粒をすべて消す
     void Clear() { for (ParticleEmitter& e : emitters_) { e.particles.clear(); e.emitAccumulator = 0.0f; } }
+    // 粒を出す口ごと全部なくす（場面の切り替え）。それまでの番号は使えなくなる
+    void RemoveAllEmitters() { emitters_.clear(); snapshot_.clear(); }
 
     // 今出ている粒の数（表示用）
     uint32_t ParticleCount() const {

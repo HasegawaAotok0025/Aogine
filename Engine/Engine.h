@@ -392,6 +392,33 @@ public:
     void Destroy(uint32_t id) { if (id != 0) { pendingDestroy_.push_back(id); } }
     void DestroyAll() { destroyAllRequested_ = true; }
 
+    // ===== 場面（シーン）の切り替え =====
+    // 置いてある物と、粒を出す口を、その場で全部片付ける。場面を切り替えるときに、次の場面を置く前に呼ぶ。
+    // DestroyAllはフレームの終わりに消す予約なので、同じフレームに次の場面が置いた物まで消えてしまう。
+    // こちらはその場で消すので、続けて置いた物は残る。
+    // 毎フレームの処理（SetUpdateCallback）の中から呼ぶこと。衝突の通知の中で呼ぶと、配っている最中の相手が消える
+    void ClearScene() {
+        objects_.clear();
+        pendingDestroy_.clear();
+        destroyAllRequested_ = false;
+        physics_.ClearContactHistory();
+        physics_.InvalidateMeshCaches();
+        particles_.RemoveAllEmitters();
+        debugSelectedId_ = 0;
+    }
+
+    // デバッグビュー（F2）で調整して保存した内容を、今置いてある物と粒を出す口へ重ねる。
+    // 起動時はRunの最初に1回呼ばれる。場面を切り替えたときは、次の場面を置いたあとに呼ぶ
+    void ApplySavedEdits() {
+        particles_.LoadSaved();
+        savedEdits_ = LoadObjectEdits();
+        const std::vector<std::string> keys = MakeObjectEditKeys(objects_);
+        for (size_t i = 0; i < objects_.size(); ++i) {
+            auto it = savedEdits_.find(keys[i]);
+            if (it != savedEdits_.end()) { it->second.ApplyTo(objects_[i]); }
+        }
+    }
+
     // ===== 時間 =====
     // 物理と部品にかける時間の倍率。0で止まる（ポーズ）、0.5でスロー。
     // ゲームの更新（SetUpdateCallback）には実際の時間がそのまま渡るので、
@@ -658,15 +685,7 @@ public:
         float physicsAccumulator = 0.0f;
 
         // 前回デバッグビューで変えた内容を、コードで作った物へ重ねる（Game::Initializeのあと）
-        particles_.LoadSaved();
-        savedEdits_ = LoadObjectEdits();
-        {
-            const std::vector<std::string> keys = MakeObjectEditKeys(objects_);
-            for (size_t i = 0; i < objects_.size(); ++i) {
-                auto it = savedEdits_.find(keys[i]);
-                if (it != savedEdits_.end()) { it->second.ApplyTo(objects_[i]); }
-            }
-        }
+        ApplySavedEdits();
 
         auto lastTime = std::chrono::steady_clock::now();
         while (ProcessWindowMessages()) {

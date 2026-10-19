@@ -4,7 +4,7 @@
 関数の細かい説明は、各ヘッダのコメントに書いてある。
 
 - [1. 全体の流れ](#1-全体の流れ)
-- [2. 入口（App.h）](#2-入口apph)
+- [2. 入口（Game クラスと場面）](#2-入口game-クラスと場面)
 - [3. Engine](#3-engine)
 - [4. Object3D（置いた物）](#4-object3d置いた物)
 - [5. Camera（3Dのカメラ）](#5-camera3dのカメラ)
@@ -37,16 +37,28 @@ main.cpp
 
 ---
 
-## 2. 入口（Game クラス）
+## 2. 入口（Game クラスと場面）
 
-ゲームは `Game/Game.h` の `Game` クラスに書く。`main.cpp` が作り、エンジンの前後で呼ぶ。
+`main.cpp` は `Game`（`Game/Game.h`）を作り、エンジンの前後で呼ぶ。
 
 | 関数 | 役目 |
 |---|---|
 | `AppStartup GetStartup() const` | 起動設定を返す（エンジンを作る前に1回） |
-| `void Initialize(Engine& engine)` | 起動直後に1回。物を置き、`SetUpdateCallback` で `Update` を登録する |
-| `void Update(float deltaTime)` | 毎フレーム。物理・部品の更新の後、描画の前 |
-| `void Finalize()` | 終わる直前に1回。ゲームが自分で作った物を片付ける |
+| `void Initialize(Engine& engine)` | 起動直後に1回。最初の場面を予約し、`SetUpdateCallback` で `Update` を登録する |
+| `void Update(float deltaTime)` | 毎フレーム。今の場面へ流す |
+| `void Finalize()` | 終わる直前に1回。今の場面を片付ける |
+
+ゲームの中身は **場面（`Game/Scene/`）** ごとに書く。`BaseScene` を継承して3つを書く。
+
+| 関数 | 役目 |
+|---|---|
+| `void Initialize(Engine&)` | 場面に入ったときに1回。物を置く（前の場面の物は片付け済み） |
+| `void Update(float)` | 毎フレーム |
+| `void Finalize()` | 場面を出るときに1回。自分で作った物（`unique_ptr` で持っている物など）を手放す |
+
+次の場面へ移るときは `sceneManager_->ChangeScene(std::make_unique<次の場面>())`。
+その場では切り替わらず、次のフレームの頭で「前の場面の Finalize → エンジンの物と粒を片付け（`ClearScene`）→ 次の場面の Initialize → F2 で保存した調整を重ねる（`ApplySavedEdits`）」の順に入れ替わる。
+見本は `TitleScene`（題と回る箱。Space で本編へ）と `GamePlayScene`（本編。Esc でタイトルへ）。
 
 `AppStartup` の項目：
 
@@ -84,7 +96,9 @@ main.cpp
 | `FindAllByTag(tag)` | タグが一致するもの全部のid |
 | `Objects()` | 置いてある物の一覧（`std::vector<Object3D>&`） |
 | `Destroy(id)` | 消す。**フレームの終わりにまとめて消える**ので、衝突の通知の中から呼んでも安全 |
-| `DestroyAll()` | 全部消す（場面の切り替えに） |
+| `DestroyAll()` | 全部消す（フレームの終わりにまとめて） |
+| `ClearScene()` | 物と粒を出す口を、その場で全部片付ける（場面の切り替え。SceneManagerが呼ぶ） |
+| `ApplySavedEdits()` | F2 で保存した調整を、今置いてある物へ重ねる（場面の切り替え。SceneManagerが呼ぶ） |
 
 ### 毎フレームの処理・通知
 
