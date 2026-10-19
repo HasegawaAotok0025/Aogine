@@ -1,6 +1,7 @@
 #include "../App.h"
 #include "../Engine/Engine.h"
 #include "Player.h"
+#include <memory>
 
 // ============================================================================
 // ゲームの入口。ここから書き始める。
@@ -16,7 +17,7 @@
 
 
 // キーで動かす箱。SetupSceneで作り、FinalizeSceneで片付ける
-static Player* player = nullptr;
+static std::unique_ptr<Player> player;
 
 void SetupScene(Engine& engine) {
     // --- カメラ ---
@@ -77,7 +78,7 @@ void SetupScene(Engine& engine) {
     }
 
     // --- キーで動かす箱（Player）---
-    player = new Player();
+    player = std::make_unique<Player>();
     player->Initialize(engine, { 0.0f, 2.0f, -2.0f });
 
     // --- モデルの差し替えの見本：Mキーで、スザンヌとUVチェッカーの形を切り替える ---
@@ -102,8 +103,7 @@ void SetupScene(Engine& engine) {
 }
 
 void FinalizeScene() {
-    delete player;
-    player = nullptr;
+    player.reset();
 }
 
 AppStartup GetAppStartup() {
