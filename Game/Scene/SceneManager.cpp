@@ -3,7 +3,9 @@
 
 void SceneManager::Update(float deltaTime) {
     if (nextScene_) {
-        if (currentScene_) { currentScene_->Finalize(); }
+        if (currentScene_) {
+            currentScene_->Finalize();
+        }
         // 前の場面が置いた物と粒を、次の場面を置く前にその場で片付ける
         engine_->ClearScene();
 
@@ -14,11 +16,15 @@ void SceneManager::Update(float deltaTime) {
         engine_->ApplySavedEdits();
     }
 
-    if (currentScene_) { currentScene_->Update(deltaTime); }
+    if (currentScene_) {
+        currentScene_->Update(deltaTime);
+    }
 }
 
 void SceneManager::Finalize() {
-    if (currentScene_) { currentScene_->Finalize(); }
+    if (currentScene_) {
+        currentScene_->Finalize();
+    }
     currentScene_.reset();
     nextScene_.reset();
 }

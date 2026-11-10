@@ -32,8 +32,12 @@ public:
 private:
     // 一周ぶん引いて範囲に収める。放っておくとfloatの桁が足りなくなり、回転がかくつき始める
     static float Wrap(float value, float period) {
-        while (value > period) { value -= period; }
-        while (value < -period) { value += period; }
+        while (value > period) {
+            value -= period;
+        }
+        while (value < -period) {
+            value += period;
+        }
         return value;
     }
 };
@@ -97,10 +101,15 @@ public:
 
         // 往路 → 端で待つ → 復路 → 端で待つ
         float t = 0.0f;
-        if (elapsed_ < oneWay)                    { t = elapsed_ / oneWay; }
-        else if (elapsed_ < oneWay + hold)        { t = 1.0f; }
-        else if (elapsed_ < oneWay * 2.0f + hold) { t = 1.0f - (elapsed_ - oneWay - hold) / oneWay; }
-        else                                      { t = 0.0f; }
+        if (elapsed_ < oneWay) {
+            t = elapsed_ / oneWay;
+        } else if (elapsed_ < oneWay + hold) {
+            t = 1.0f;
+        } else if (elapsed_ < oneWay * 2.0f + hold) {
+            t = 1.0f - (elapsed_ - oneWay - hold) / oneWay;
+        } else {
+            t = 0.0f;
+        }
 
         float eased = smooth ? (t * t * (3.0f - 2.0f * t)) : t;
         translate = {

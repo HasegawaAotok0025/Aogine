@@ -6,7 +6,9 @@
 
 AABB ComputeLocalAABB(const std::vector<Vector3>& positions) {
     AABB aabb;
-    if (positions.empty()) { return aabb; }
+    if (positions.empty()) {
+        return aabb;
+    }
 
     aabb.min = { (std::numeric_limits<float>::max)(), (std::numeric_limits<float>::max)(), (std::numeric_limits<float>::max)() };
     aabb.max = { -(std::numeric_limits<float>::max)(), -(std::numeric_limits<float>::max)(), -(std::numeric_limits<float>::max)() };
@@ -96,12 +98,19 @@ bool ComputeSAT(const OBB& a, const OBB& b, SATResult& out) {
         for (int i = 0; i < 3; ++i) {
             Vector3 L = (side == 0) ? a.axis[i] : b.axis[i];
             float overlap = ProjectedRadius(a, L) + ProjectedRadius(b, L) - fabsf(Dot(T, L));
-            if (overlap < 0.0f) { return false; } // この軸で離れている＝衝突していない
+            // この軸で離れている＝衝突していない
+            if (overlap < 0.0f) {
+                return false;
+            }
             if (overlap < bestOverlap) {
                 bestOverlap = overlap;
                 bestAxis = L;
                 bestFeature = (side == 0) ? SATFeature::FaceA : SATFeature::FaceB;
-                if (side == 0) { bestI = i; } else { bestJ = i; }
+                if (side == 0) {
+                    bestI = i;
+                } else {
+                    bestJ = i;
+                }
             }
         }
     }
@@ -123,11 +132,16 @@ bool ComputeSAT(const OBB& a, const OBB& b, SATResult& out) {
         for (int j = 0; j < 3; ++j) {
             Vector3 c = Cross(a.axis[i], b.axis[j]);
             float len = Length(c);
-            if (len < 1e-6f) { continue; } // 辺どうしがほぼ平行。この軸は判定に使えない
+            // 辺どうしがほぼ平行。この軸は判定に使えない
+            if (len < 1e-6f) {
+                continue;
+            }
             Vector3 L = Scale(c, 1.0f / len);
 
             float overlap = ProjectedRadius(a, L) + ProjectedRadius(b, L) - fabsf(Dot(T, L));
-            if (overlap < 0.0f) { return false; }
+            if (overlap < 0.0f) {
+                return false;
+            }
 
             if (overlap < bestEdgeOverlap) {
                 bestEdgeOverlap = overlap;
@@ -148,8 +162,12 @@ bool ComputeSAT(const OBB& a, const OBB& b, SATResult& out) {
 
     // 軸の向きは外積やボックスの軸の取り方で符号が定まらないので、
     // 必ず「aからbへ向かう向き」に揃えておく。これで呼び出し側が毎回符号を悩まずに済む
-    if (Dot(T, bestAxis) < 0.0f) { bestAxis = Scale(bestAxis, -1.0f); }
-    if (Dot(T, bestEdgeAxis) < 0.0f) { bestEdgeAxis = Scale(bestEdgeAxis, -1.0f); }
+    if (Dot(T, bestAxis) < 0.0f) {
+        bestAxis = Scale(bestAxis, -1.0f);
+    }
+    if (Dot(T, bestEdgeAxis) < 0.0f) {
+        bestEdgeAxis = Scale(bestEdgeAxis, -1.0f);
+    }
 
     out.axis = bestAxis;
     out.penetration = bestOverlap;
@@ -172,7 +190,9 @@ bool Intersect(const OBB& a, const OBB& b) {
 
 bool ComputeMTV(const OBB& a, const OBB& b, Vector3& mtv) {
     SATResult result;
-    if (!ComputeSAT(a, b, result)) { return false; }
+    if (!ComputeSAT(a, b, result)) {
+        return false;
+    }
 
     // ComputeSATの軸は「aからbへ向かう向き」なので、aを遠ざけるには逆向きに押す
     mtv = Scale(result.axis, -result.penetration);
@@ -214,8 +234,13 @@ void ClosestPointsBetweenSegments(const Vector3& p1, const Vector3& q1,
             s = (denom > kEpsilon) ? Saturate((b * f - c * e) / denom) : 0.0f;
             t = (b * s + f) / e;
             // 求めたtが線分の外に出た場合は端点に留め、その位置で改めてsを求め直す
-            if (t < 0.0f) { t = 0.0f; s = Saturate(-c / a); }
-            else if (t > 1.0f) { t = 1.0f; s = Saturate((b - c) / a); }
+            if (t < 0.0f) {
+                t = 0.0f;
+                s = Saturate(-c / a);
+            } else if (t > 1.0f) {
+                t = 1.0f;
+                s = Saturate((b - c) / a);
+            }
         }
     }
 
@@ -242,7 +267,10 @@ void FindContactEdgePoints(const OBB& a, const OBB& b, const SATResult& sat,
     // aの辺：bのある向き（+axis）へ寄せる
     Vector3 baseA = a.center;
     for (int k = 0; k < 3; ++k) {
-        if (k == indexA) { continue; } // 辺に沿った軸は自由。このあと±halfで両端を作る
+        // 辺に沿った軸は自由。このあと±halfで両端を作る
+        if (k == indexA) {
+            continue;
+        }
         float sign = (Dot(a.axis[k], axis) >= 0.0f) ? 1.0f : -1.0f;
         baseA = Add(baseA, Scale(a.axis[k], halfA[k] * sign));
     }
@@ -250,7 +278,9 @@ void FindContactEdgePoints(const OBB& a, const OBB& b, const SATResult& sat,
     // bの辺：aのある向き（-axis）へ寄せる
     Vector3 baseB = b.center;
     for (int k = 0; k < 3; ++k) {
-        if (k == indexB) { continue; }
+        if (k == indexB) {
+            continue;
+        }
         float sign = (Dot(b.axis[k], axis) >= 0.0f) ? -1.0f : 1.0f;
         baseB = Add(baseB, Scale(b.axis[k], halfB[k] * sign));
     }
@@ -286,7 +316,10 @@ namespace {
             float dCur = Dot(planeNormal, cur) - planeOffset;
             float dNext = Dot(planeNormal, next) - planeOffset;
 
-            if (dCur <= 0.0f) { out[outCount++] = cur; }              // 残す側にある頂点
+            // 残す側にある頂点
+            if (dCur <= 0.0f) {
+                out[outCount++] = cur;
+            }
             if ((dCur > 0.0f) != (dNext > 0.0f)) {                    // この辺が平面をまたいだ
                 float t = dCur / (dCur - dNext);
                 out[outCount++] = Add(cur, Scale(Sub(next, cur), t)); // 交点を新しい頂点にする
@@ -335,7 +368,10 @@ int BuildContactManifold(const OBB& a, const OBB& b, const SATResult& sat,
     float bestAlignment = -1.0f;
     for (int k = 0; k < 3; ++k) {
         float alignment = fabsf(Dot(inc.axis[k], n));
-        if (alignment > bestAlignment) { bestAlignment = alignment; incIndex = k; }
+        if (alignment > bestAlignment) {
+            bestAlignment = alignment;
+            incIndex = k;
+        }
     }
     float incSign = (Dot(inc.axis[incIndex], n) >= 0.0f) ? -1.0f : 1.0f; // nと逆を向く面
     Vector3 incFaceCenter = Add(inc.center, Scale(inc.axis[incIndex], incHalf[incIndex] * incSign));
@@ -361,16 +397,22 @@ int BuildContactManifold(const OBB& a, const OBB& b, const SATResult& sat,
         float center = Dot(t, refFaceCenter);
 
         count = ClipPolygonAgainstPlane(polygon, count, t, center + half, scratch);
-        if (count == 0) { break; }
+        if (count == 0) {
+            break;
+        }
         count = ClipPolygonAgainstPlane(scratch, count, Scale(t, -1.0f), -center + half, polygon);
-        if (count == 0) { break; }
+        if (count == 0) {
+            break;
+        }
     }
 
     // 基準面より内側（めり込んでいる側）にある頂点だけを接触点として採用する
     int result = 0;
     for (int i = 0; i < count && result < kMaxManifoldPoints; ++i) {
         float depth = -Dot(Sub(polygon[i], refFaceCenter), n); // 正なら基準面より内側
-        if (depth < 0.0f) { continue; }
+        if (depth < 0.0f) {
+            continue;
+        }
         outPoints[result] = polygon[i];
         outDepths[result] = depth;
         result++;
@@ -421,13 +463,23 @@ bool RayIntersectOBB(const Vector3& rayOrigin, const Vector3& rayDir, const OBB&
         if (fabsf(f) > 1e-8f) {
             float t1 = (e + halfSizes[i]) / f;
             float t2 = (e - halfSizes[i]) / f;
-            if (t1 > t2) { std::swap(t1, t2); }
-            if (t1 > tMin) { tMin = t1; }
-            if (t2 < tMax) { tMax = t2; }
-            if (tMin > tMax) { return false; }
+            if (t1 > t2) {
+                std::swap(t1, t2);
+            }
+            if (t1 > tMin) {
+                tMin = t1;
+            }
+            if (t2 < tMax) {
+                tMax = t2;
+            }
+            if (tMin > tMax) {
+                return false;
+            }
         } else {
             // レイがこのスラブとほぼ平行：原点がスラブの外側にあれば絶対に交差しない
-            if (-e - halfSizes[i] > 0.0f || -e + halfSizes[i] < 0.0f) { return false; }
+            if (-e - halfSizes[i] > 0.0f || -e + halfSizes[i] < 0.0f) {
+                return false;
+            }
         }
     }
 

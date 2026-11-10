@@ -26,15 +26,27 @@ public:
     float cooldownSeconds = 0.08f;   // 続けて鳴らさない間隔
 
     void OnUpdate(ComponentContext& ctx) override {
-        if (cooldown_ > 0.0f) { cooldown_ -= ctx.deltaTime; }
+        if (cooldown_ > 0.0f) {
+            cooldown_ -= ctx.deltaTime;
+        }
     }
 
     void OnCollision(ComponentContext& ctx, const ComponentCollision& hit) override {
-        if (!ctx.services) { return; }
-        if (hit.phase != CollisionPhase::Enter) { return; }
-        if (hit.impulse < minImpulse) { return; }
-        if (cooldown_ > 0.0f) { return; }
-        if (!onlyTag.empty() && (!hit.other || hit.other->tag != onlyTag)) { return; }
+        if (!ctx.services) {
+            return;
+        }
+        if (hit.phase != CollisionPhase::Enter) {
+            return;
+        }
+        if (hit.impulse < minImpulse) {
+            return;
+        }
+        if (cooldown_ > 0.0f) {
+            return;
+        }
+        if (!onlyTag.empty() && (!hit.other || hit.other->tag != onlyTag)) {
+            return;
+        }
 
         ctx.services->PlayCue(cue, volume);
         cooldown_ = cooldownSeconds;
@@ -58,7 +70,9 @@ public:
     bool IsHidden() const { return hidden_; }
 
     void OnUpdate(ComponentContext& ctx) override {
-        if (!hidden_ || respawnSeconds <= 0.0f) { return; }
+        if (!hidden_ || respawnSeconds <= 0.0f) {
+            return;
+        }
         timer_ += ctx.deltaTime;
         if (timer_ >= respawnSeconds) {
             ctx.self.visible = true;
@@ -69,9 +83,15 @@ public:
     }
 
     void OnCollision(ComponentContext& ctx, const ComponentCollision& hit) override {
-        if (hidden_) { return; }
-        if (hit.phase != CollisionPhase::Enter) { return; }
-        if (!onlyTag.empty() && (!hit.other || hit.other->tag != onlyTag)) { return; }
+        if (hidden_) {
+            return;
+        }
+        if (hit.phase != CollisionPhase::Enter) {
+            return;
+        }
+        if (!onlyTag.empty() && (!hit.other || hit.other->tag != onlyTag)) {
+            return;
+        }
 
         ctx.self.visible = false;
         ctx.self.useBoxCollider = false;
@@ -94,8 +114,12 @@ public:
     std::string onlyTag;
 
     void OnCollision(ComponentContext& ctx, const ComponentCollision& hit) override {
-        if (!ctx.self.materialData) { return; }
-        if (!onlyTag.empty() && (!hit.other || hit.other->tag != onlyTag)) { return; }
+        if (!ctx.self.materialData) {
+            return;
+        }
+        if (!onlyTag.empty() && (!hit.other || hit.other->tag != onlyTag)) {
+            return;
+        }
 
         if (hit.phase == CollisionPhase::Exit) {
             if (touching_) {

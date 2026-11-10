@@ -41,7 +41,9 @@ void InputEngine::Initialize(HWND hwnd) {
 }
 
 void InputEngine::Finalize() {
-    if (keyboard_) { keyboard_->Unacquire(); }
+    if (keyboard_) {
+        keyboard_->Unacquire();
+    }
     keyboard_.Reset();
     directInput_.Reset();
 }
@@ -73,7 +75,9 @@ void InputEngine::Update() {
         mouse_[(int)MouseButton::Right] = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
         mouse_[(int)MouseButton::Middle] = (GetAsyncKeyState(VK_MBUTTON) & 0x8000) != 0;
     } else {
-        for (bool& button : mouse_) { button = false; }
+        for (bool& button : mouse_) {
+            button = false;
+        }
     }
 
     if (hwnd_) {
@@ -99,7 +103,9 @@ void InputEngine::UpdateGamepad() {
     // 繋がっていないパッドを毎フレーム探すと、そのたびに待たされることがある。
     // 見失っている間は間隔を空け、遊んでいる途中で繋いだ場合だけ拾えるようにする
     if (!padConnected_) {
-        if (--padSearchCountdown_ > 0) { return; }
+        if (--padSearchCountdown_ > 0) {
+            return;
+        }
         padSearchCountdown_ = kPadSearchInterval;
     }
 
@@ -113,15 +119,21 @@ void InputEngine::UpdateGamepad() {
     // 非アクティブなときは、キーボードやマウスと同じく「何も押されていない」にする。
     // XInputはウィンドウが手前かどうかを見ないので、ここで揃えないと
     // 裏に回している間も操作が届いてしまう
-    if (!windowActive_) { return; }
+    if (!windowActive_) {
+        return;
+    }
 
     padButtons_ = state.Gamepad.wButtons;
 
     // スティックの遊び。中心付近の微小な傾きを切り捨てたうえで、
     // 残りを0〜1へ引き伸ばす（切り捨てただけだと、遊びの縁で値が飛ぶ）
     auto ApplyDeadZone = [](SHORT value, SHORT deadZone) -> float {
-        if (value > deadZone) { return float(value - deadZone) / float(32767 - deadZone); }
-        if (value < -deadZone) { return float(value + deadZone) / float(32768 - deadZone); }
+        if (value > deadZone) {
+            return float(value - deadZone) / float(32767 - deadZone);
+        }
+        if (value < -deadZone) {
+            return float(value + deadZone) / float(32768 - deadZone);
+        }
         return 0.0f;
     };
     padLeftX_ = ApplyDeadZone(state.Gamepad.sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);

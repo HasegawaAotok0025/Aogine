@@ -178,7 +178,9 @@ struct Object3D {
 
     // 質量の逆数。静止オブジェクトは「無限に重い」とみなして0を返す（どんな撃力でも動かない）
     float GetInverseMass() const {
-        if (isStatic || !usePhysics || mass <= 0.0f) { return 0.0f; }
+        if (isStatic || !usePhysics || mass <= 0.0f) {
+            return 0.0f;
+        }
         return 1.0f / mass;
     }
 
@@ -211,8 +213,13 @@ struct Object3D {
         };
 
         // 拘束された軸は逆数を0に＝その軸まわりの慣性が無限大。撃力を受けても回らない
-        if (rotationMode == RotationMode::PlanarZ) { invInertia.x = 0.0f; invInertia.y = 0.0f; }
-        else if (rotationMode == RotationMode::UprightLock) { invInertia.x = 0.0f; invInertia.z = 0.0f; }
+        if (rotationMode == RotationMode::PlanarZ) {
+            invInertia.x = 0.0f;
+            invInertia.y = 0.0f;
+        } else if (rotationMode == RotationMode::UprightLock) {
+            invInertia.x = 0.0f;
+            invInertia.z = 0.0f;
+        }
         return invInertia;
     }
 
@@ -275,8 +282,14 @@ static_assert(std::is_nothrow_move_constructible_v<Object3D>,
 // idから今の配列上のオブジェクトを引く（見つからなければnullptr）。
 // エンジンも物理も、フレームをまたいで同じ物を指すときはこれで引き直す
 inline Object3D* FindObjectById(std::vector<Object3D>& objects, uint32_t id) {
-    if (id == 0) { return nullptr; }
-    for (Object3D& obj : objects) { if (obj.id == id) { return &obj; } }
+    if (id == 0) {
+        return nullptr;
+    }
+    for (Object3D& obj : objects) {
+        if (obj.id == id) {
+            return &obj;
+        }
+    }
     return nullptr;
 }
 

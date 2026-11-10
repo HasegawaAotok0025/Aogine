@@ -20,19 +20,27 @@ void AudioEngine::Initialize() {
     assert(SUCCEEDED(hr));
     // 圧縮された音（mp3など）を展開するMedia Foundation。COMの開始（WinAppInitialize）のあとで呼ぶ
     mediaFoundationStarted_ = SUCCEEDED(MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET));
-    if (!mediaFoundationStarted_) { Log("[Audio] Media Foundationを始められませんでした。WAV以外の音は鳴らせません"); }
+    if (!mediaFoundationStarted_) {
+        Log("[Audio] Media Foundationを始められませんでした。WAV以外の音は鳴らせません");
+    }
 }
 
 void AudioEngine::Finalize() {
     // IXAudio2を捨てればSourceVoiceもまとめて消えるが、控えの方は自分で空にしておく
     for (IXAudio2SourceVoice* voice : oneShotVoices_) {
-        if (voice) { voice->Stop(); voice->DestroyVoice(); }
+        if (voice) {
+            voice->Stop();
+            voice->DestroyVoice();
+        }
     }
     oneShotVoices_.clear();
     // MasteringVoiceはIXAudio2破棄時に自動的に破棄されるので、明示的なDestroyVoiceは不要
     xAudio2_.Reset();
     masterVoice_ = nullptr;
-    if (mediaFoundationStarted_) { MFShutdown(); mediaFoundationStarted_ = false; }
+    if (mediaFoundationStarted_) {
+        MFShutdown();
+        mediaFoundationStarted_ = false;
+    }
 }
 
 namespace {
@@ -76,13 +84,17 @@ SoundData AudioEngine::LoadWave(const std::string& filePath) {
     while (file) {
         ChunkHeader chunk{};
         file.read(reinterpret_cast<char*>(&chunk), sizeof(chunk));
-        if (!file || chunk.size < 0) { break; }
+        if (!file || chunk.size < 0) {
+            break;
+        }
         if (std::strncmp(chunk.id, "fmt ", 4) == 0) {
             // 拡張の付いた形式（WAVE_FORMAT_EXTENSIBLE）はWAVEFORMATEXに収まらない。
             // 収まるぶんだけ読んで、残りは読み飛ばす
             int32_t readable = (std::min)(chunk.size, (int32_t)sizeof(wfex));
             file.read(reinterpret_cast<char*>(&wfex), readable);
-            if (chunk.size > readable) { file.seekg(chunk.size - readable, std::ios_base::cur); }
+            if (chunk.size > readable) {
+                file.seekg(chunk.size - readable, std::ios_base::cur);
+            }
             foundFormat = true;
             break;
         }
@@ -98,8 +110,13 @@ SoundData AudioEngine::LoadWave(const std::string& filePath) {
     bool foundData = false;
     while (file) {
         file.read(reinterpret_cast<char*>(&data), sizeof(data));
-        if (!file || data.size < 0) { break; }
-        if (std::strncmp(data.id, "data", 4) == 0) { foundData = true; break; }
+        if (!file || data.size < 0) {
+            break;
+        }
+        if (std::strncmp(data.id, "data", 4) == 0) {
+            foundData = true;
+            break;
+        }
         file.seekg(data.size, std::ios_base::cur);
     }
     if (!foundData || data.size <= 0) {
@@ -127,7 +144,10 @@ SoundData AudioEngine::LoadWave(const std::string& filePath) {
 // 読めなければ（ファイルが無い・形式が分からない）、中身の無いSoundDataを返す（LoadWaveと同じく、鳴らないだけで止まらない）
 SoundData AudioEngine::LoadAudio(const std::string& filePath) {
     SoundData soundData;
-    if (!mediaFoundationStarted_) { return LoadWave(filePath); } // 展開できないなら、WAVとしてだけ読んでみる
+    // 展開できないなら、WAVとしてだけ読んでみる
+    if (!mediaFoundationStarted_) {
+        return LoadWave(filePath);
+    }
 
     ComPtr<IMFSourceReader> reader;
     HRESULT hr = MFCreateSourceReaderFromURL(ConvertString(filePath).c_str(), nullptr, &reader);
@@ -170,11 +190,17 @@ SoundData AudioEngine::LoadAudio(const std::string& filePath) {
         DWORD flags = 0;
         ComPtr<IMFSample> sample;
         hr = reader->ReadSample(static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM), 0, nullptr, &flags, nullptr, &sample);
-        if (FAILED(hr) || (flags & MF_SOURCE_READERF_ENDOFSTREAM)) { break; }
-        if (!sample) { continue; }
+        if (FAILED(hr) || (flags & MF_SOURCE_READERF_ENDOFSTREAM)) {
+            break;
+        }
+        if (!sample) {
+            continue;
+        }
 
         ComPtr<IMFMediaBuffer> buffer;
-        if (FAILED(sample->ConvertToContiguousBuffer(&buffer))) { continue; }
+        if (FAILED(sample->ConvertToContiguousBuffer(&buffer))) {
+            continue;
+        }
         BYTE* data = nullptr;
         DWORD length = 0;
         if (SUCCEEDED(buffer->Lock(&data, nullptr, &length))) {
@@ -199,11 +225,15 @@ SoundVoice AudioEngine::Play(const SoundData& soundData, bool loop, float volume
     SoundVoice handle;
     // 読み込めなかった音は、中身の無いSoundDataのまま渡ってくる。
     // ここで弾かないと、鳴らそうとした場所すべてで落ちることになる
-    if (!xAudio2_ || !soundData.IsLoaded()) { return handle; }
+    if (!xAudio2_ || !soundData.IsLoaded()) {
+        return handle;
+    }
 
     IXAudio2SourceVoice* sourceVoice = nullptr;
     HRESULT hr = xAudio2_->CreateSourceVoice(&sourceVoice, &soundData.wfex);
-    if (FAILED(hr) || !sourceVoice) { return handle; }
+    if (FAILED(hr) || !sourceVoice) {
+        return handle;
+    }
 
     XAUDIO2_BUFFER buffer{};
     buffer.pAudioData = soundData.buffer.data();
@@ -222,10 +252,14 @@ SoundVoice AudioEngine::Play(const SoundData& soundData, bool loop, float volume
 }
 
 void AudioEngine::PlayOneShot(const SoundData& soundData, float volume, float pitch) {
-    if (!xAudio2_ || !soundData.IsLoaded()) { return; }
+    if (!xAudio2_ || !soundData.IsLoaded()) {
+        return;
+    }
 
     IXAudio2SourceVoice* sourceVoice = nullptr;
-    if (FAILED(xAudio2_->CreateSourceVoice(&sourceVoice, &soundData.wfex)) || !sourceVoice) { return; }
+    if (FAILED(xAudio2_->CreateSourceVoice(&sourceVoice, &soundData.wfex)) || !sourceVoice) {
+        return;
+    }
 
     XAUDIO2_BUFFER buffer{};
     buffer.pAudioData = soundData.buffer.data();
@@ -246,10 +280,15 @@ void AudioEngine::Update() {
     // 残す方を前へ詰めていくので、鳴っている音の順番は変わらない
     size_t kept = 0;
     for (IXAudio2SourceVoice* voice : oneShotVoices_) {
-        if (!voice) { continue; }
+        if (!voice) {
+            continue;
+        }
         XAUDIO2_VOICE_STATE state{};
         voice->GetState(&state, XAUDIO2_VOICE_NOSAMPLESPLAYED);
-        if (state.BuffersQueued > 0) { oneShotVoices_[kept++] = voice; continue; }
+        if (state.BuffersQueued > 0) {
+            oneShotVoices_[kept++] = voice;
+            continue;
+        }
         voice->DestroyVoice();
     }
     oneShotVoices_.resize(kept);
@@ -264,9 +303,13 @@ void SoundVoice::Stop() {
 }
 
 void SoundVoice::SetVolume(float volume) {
-    if (voice_) { voice_->SetVolume(volume); }
+    if (voice_) {
+        voice_->SetVolume(volume);
+    }
 }
 
 void SoundVoice::SetPitch(float pitchRatio) {
-    if (voice_) { voice_->SetFrequencyRatio(pitchRatio); }
+    if (voice_) {
+        voice_->SetFrequencyRatio(pitchRatio);
+    }
 }

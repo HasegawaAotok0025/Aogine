@@ -191,7 +191,10 @@ inline void GraphicsContext::Initialize(HWND hwnd, int32_t width, int32_t height
 }
 
 inline void GraphicsContext::Resize(int32_t width, int32_t height) {
-    if (width <= 0 || height <= 0) { return; } // 最小化中など
+    // 最小化中など
+    if (width <= 0 || height <= 0) {
+        return;
+    }
     WaitForGPU();
 
     swapChainResources[0].Reset();
@@ -226,7 +229,10 @@ inline void GraphicsContext::CreateSizeDependentResources(int32_t width, int32_t
 }
 
 inline void GraphicsContext::Finalize() {
-    if (fenceEvent) { CloseHandle(fenceEvent); fenceEvent = nullptr; }
+    if (fenceEvent) {
+        CloseHandle(fenceEvent);
+        fenceEvent = nullptr;
+    }
 }
 
 inline void GraphicsContext::TransitionBackBuffer(D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
@@ -302,7 +308,9 @@ struct Object3DPipeline {
 inline D3D12_RENDER_TARGET_BLEND_DESC MakeBlendDesc(BlendMode mode) {
     D3D12_RENDER_TARGET_BLEND_DESC blend{};
     blend.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-    if (mode == BlendMode::kNone) { return blend; }
+    if (mode == BlendMode::kNone) {
+        return blend;
+    }
 
     blend.BlendEnable = TRUE;
     blend.BlendOp = D3D12_BLEND_OP_ADD;
@@ -832,7 +840,9 @@ inline Draw2DMesh CreateDraw2DQuadMesh(ID3D12Device* device) {
 // もう1組増やすことになる。頂点で作れば、四角とまったく同じ道で描ける。
 // 分割数32は、半径200pxの円でも辺1本ぶんのふくらみが1px以下に収まる
 inline Draw2DMesh CreateDraw2DCircleMesh(ID3D12Device* device, int segments = 32) {
-    if (segments < 3) { segments = 3; }
+    if (segments < 3) {
+        segments = 3;
+    }
 
     std::vector<Draw2DVertex> vertices;
     vertices.reserve((size_t)segments + 1);
@@ -957,14 +967,20 @@ inline LinePipeline CreateDraw2DPipeline(ID3D12Device* device, Object3DPipeline&
 // Meiryo→游ゴシック→MSゴシックの順で、実在するものを1つ使う
 inline void LoadImGuiFont(ImGuiIO& io) {
     char windowsDir[MAX_PATH]{};
-    if (GetWindowsDirectoryA(windowsDir, MAX_PATH) == 0) { strcpy_s(windowsDir, "C:\\Windows"); }
+    if (GetWindowsDirectoryA(windowsDir, MAX_PATH) == 0) {
+        strcpy_s(windowsDir, "C:\\Windows");
+    }
 
     const char* candidates[] = { "meiryo.ttc", "YuGothR.ttc", "msgothic.ttc" };
     for (const char* candidate : candidates) {
         std::string path = std::string(windowsDir) + "\\Fonts\\" + candidate;
         // 読めないファイルを渡すとassertで落ちるので、先に存在を確かめる
-        if (GetFileAttributesA(path.c_str()) == INVALID_FILE_ATTRIBUTES) { continue; }
-        if (io.Fonts->AddFontFromFileTTF(path.c_str(), 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese())) { return; }
+        if (GetFileAttributesA(path.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            continue;
+        }
+        if (io.Fonts->AddFontFromFileTTF(path.c_str(), 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese())) {
+            return;
+        }
     }
 }
 
@@ -1022,6 +1038,9 @@ inline Vector3 UnprojectNDCToWorld(float ndcX, float ndcY, float ndcZ, const Mat
     float ry = x * invViewProjection.m[0][1] + y * invViewProjection.m[1][1] + z * invViewProjection.m[2][1] + w * invViewProjection.m[3][1];
     float rz = x * invViewProjection.m[0][2] + y * invViewProjection.m[1][2] + z * invViewProjection.m[2][2] + w * invViewProjection.m[3][2];
     float rw = x * invViewProjection.m[0][3] + y * invViewProjection.m[1][3] + z * invViewProjection.m[2][3] + w * invViewProjection.m[3][3];
-    if (fabsf(rw) < 1e-8f) { rw = 1e-8f; } // ゼロ割回避
+    // ゼロ割回避
+    if (fabsf(rw) < 1e-8f) {
+        rw = 1e-8f;
+    }
     return { rx / rw, ry / rw, rz / rw };
 }

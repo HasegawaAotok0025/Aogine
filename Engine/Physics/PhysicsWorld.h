@@ -38,14 +38,22 @@ struct CollisionEvent {
     }
     // このタグを持っている側を返す（無ければnullptr）
     Object3D* WithTag(const std::string& targetTag) const {
-        if (a && a->tag == targetTag) { return a; }
-        if (b && b->tag == targetTag) { return b; }
+        if (a && a->tag == targetTag) {
+            return a;
+        }
+        if (b && b->tag == targetTag) {
+            return b;
+        }
         return nullptr;
     }
     // 自分ではない方（相手）を返す。selfがこの衝突に関係していなければnullptr
     Object3D* Other(const Object3D* self) const {
-        if (self == a) { return b; }
-        if (self == b) { return a; }
+        if (self == a) {
+            return b;
+        }
+        if (self == b) {
+            return a;
+        }
         return nullptr;
     }
 };
@@ -101,7 +109,9 @@ public:
 
     // 1ステップぶん時間を進める
     void Step(float deltaTime, std::vector<Object3D>& objects) {
-        if (deltaTime <= 0.0f) { return; }
+        if (deltaTime <= 0.0f) {
+            return;
+        }
         sceneObjects_ = &objects;
 
         SyncOrientationFromEuler(objects);   // ゲームのコードで回転をいじられていたら取り込む
@@ -252,7 +262,10 @@ private:
         const float invI[3] = { body.invInertia.x, body.invInertia.y, body.invInertia.z };
         Vector3 result{ 0.0f, 0.0f, 0.0f };
         for (int k = 0; k < 3; ++k) {
-            if (invI[k] == 0.0f) { continue; } // 拘束された軸（無限の慣性）
+            // 拘束された軸（無限の慣性）
+            if (invI[k] == 0.0f) {
+                continue;
+            }
             result = Add(result, Scale(body.axis[k], invI[k] * Dot(worldVector, body.axis[k])));
         }
         return result;
@@ -261,7 +274,10 @@ private:
     // 撃力Jを、重心からrだけ離れた点に加える。
     // 並進（Δv = J/m）と回転（Δω = I⁻¹(r×J)）が同時に変わるのが剛体の要点
     static void ApplyImpulse(const BodyProxy& body, const Vector3& impulse, const Vector3& r) {
-        if (body.invMass <= 0.0f) { return; } // 静止オブジェクトは無限に重いので動かない
+        // 静止オブジェクトは無限に重いので動かない
+        if (body.invMass <= 0.0f) {
+            return;
+        }
 
         Object3D& obj = *body.obj;
         obj.velocity = Add(obj.velocity, Scale(impulse, body.invMass));
@@ -277,7 +293,9 @@ private:
     //   k = 1/m + (r×n)・I⁻¹(r×n)
     // 回転しにくい向き（拘束された軸や、慣性モーメントの大きい軸）ほど小さくなり、重く感じる
     static float EffectiveMassTerm(const BodyProxy& body, const Vector3& r, const Vector3& n) {
-        if (body.invMass <= 0.0f) { return 0.0f; }
+        if (body.invMass <= 0.0f) {
+            return 0.0f;
+        }
         Vector3 rn = Cross(r, n);
         return body.invMass + Dot(rn, ApplyInverseInertia(body, rn));
     }
@@ -306,7 +324,9 @@ private:
     // ここさえ合わせておけば他のコードは一切クォータニオンを知らなくてよい
     static void WriteBackEuler(std::vector<Object3D>& objects) {
         for (auto& obj : objects) {
-            if (obj.isStatic || !obj.usePhysics) { continue; }
+            if (obj.isStatic || !obj.usePhysics) {
+                continue;
+            }
             obj.transform.rotate = EulerXYZFromQuaternion(obj.orientation);
             obj.syncedEuler = obj.transform.rotate;
         }
@@ -322,7 +342,10 @@ private:
         OBB obbB = b.GetWorldOBB();
 
         SATResult sat;
-        if (!ComputeSAT(obbA, obbB, sat)) { return; } // 離れている
+        // 離れている
+        if (!ComputeSAT(obbA, obbB, sat)) {
+            return;
+        }
 
         // 接触点の求め方はOBBの幾何だけで決まる話なので、BoxColliderに任せる。
         // 面で当たっていれば面を切り取って複数点、辺どうしなら最接近点1点が返る
@@ -347,8 +370,12 @@ private:
         contacts_.push_back(contact);
 
         // ほぼ真上を向いた法線で押し返されている＝何かの上に乗っている。ジャンプ可否の判定に使う
-        if (normal.y > 0.5f) { a.isGrounded = true; }
-        if (normal.y < -0.5f) { b.isGrounded = true; }
+        if (normal.y > 0.5f) {
+            a.isGrounded = true;
+        }
+        if (normal.y < -0.5f) {
+            b.isGrounded = true;
+        }
     }
 
     // 重なり判定に参加できる形を持っているか。トリガーは押し返しに使わないためuseBoxColliderがOFFでも構わないが、
@@ -360,7 +387,9 @@ private:
     void CollectTriggerOverlap(Object3D& a, Object3D& b) {
         OBB obbA = a.GetWorldOBB();
         OBB obbB = b.GetWorldOBB();
-        if (!Intersect(obbA, obbB)) { return; }
+        if (!Intersect(obbA, obbB)) {
+            return;
+        }
 
         TriggerOverlap overlap{};
         overlap.a = &a;
@@ -376,7 +405,10 @@ private:
         triggerOverlaps_.clear();
         meshCollidingFlags_.assign(objects.size(), false);
         for (auto& obj : objects) {
-            if (!obj.isStatic) { obj.isGrounded = false; } // 接地判定はこのあとの接触生成で立て直す
+            // 接地判定はこのあとの接触生成で立て直す
+            if (!obj.isStatic) {
+                obj.isGrounded = false;
+            }
         }
 
         // --- シーン内のオブジェクト同士 ---
@@ -386,28 +418,45 @@ private:
                 Object3D& a = objects[i];
                 Object3D& b = objects[j];
                 // どちらも動かないなら調べる意味がない
-                if (a.GetInverseMass() <= 0.0f && b.GetInverseMass() <= 0.0f) { continue; }
+                if (a.GetInverseMass() <= 0.0f && b.GetInverseMass() <= 0.0f) {
+                    continue;
+                }
                 // スプライトは画面の板（座標は画面の上の値）で、3Dの世界には居ない。
                 // レイや影と同じく、物理でも相手にしない
-                if (a.isSprite || b.isSprite) { continue; }
+                if (a.isSprite || b.isSprite) {
+                    continue;
+                }
 
                 // トリガーが絡む組は、形状の種類にかかわらず「重なっているか」だけを見る。
                 // 押し返さない以上、接触点を精密に求める意味がないので、粗いOBB判定で十分
                 if (a.isTrigger || b.isTrigger) {
-                    if (HasOverlapShape(a) && HasOverlapShape(b)) { CollectTriggerOverlap(a, b); }
+                    if (HasOverlapShape(a) && HasOverlapShape(b)) {
+                        CollectTriggerOverlap(a, b);
+                    }
                     continue;
                 }
 
-                if (hasMeshCollider_[j] && !hasMeshCollider_[i]) { CollectMeshContacts(a, b, j, i); continue; }
-                if (hasMeshCollider_[i] && !hasMeshCollider_[j]) { CollectMeshContacts(b, a, i, j); continue; }
+                if (hasMeshCollider_[j] && !hasMeshCollider_[i]) {
+                    CollectMeshContacts(a, b, j, i);
+                    continue;
+                }
+                if (hasMeshCollider_[i] && !hasMeshCollider_[j]) {
+                    CollectMeshContacts(b, a, i, j);
+                    continue;
+                }
                 if (hasMeshCollider_[i] && hasMeshCollider_[j]) {
                     // 複雑な形状同士は、動く側の頂点を相手の三角形に対して判定する
-                    if (a.GetInverseMass() > 0.0f) { CollectMeshContacts(a, b, j, i); }
-                    else { CollectMeshContacts(b, a, i, j); }
+                    if (a.GetInverseMass() > 0.0f) {
+                        CollectMeshContacts(a, b, j, i);
+                    } else {
+                        CollectMeshContacts(b, a, i, j);
+                    }
                     continue;
                 }
 
-                if (!a.useBoxCollider || !b.useBoxCollider) { continue; }
+                if (!a.useBoxCollider || !b.useBoxCollider) {
+                    continue;
+                }
                 CollectBoxContacts(a, b);
             }
         }
@@ -416,12 +465,17 @@ private:
     // 動く側(mover)と、メッシュコライダーを持つ相手(mesh)の接触。
     // メッシュ側は静止専用（Unityと同じ設計）なので、接触点は1つだけ作れば十分
     void CollectMeshContacts(Object3D& mover, Object3D& mesh, size_t meshIndex, size_t moverIndex) {
-        if (mover.GetInverseMass() <= 0.0f) { return; }
+        if (mover.GetInverseMass() <= 0.0f) {
+            return;
+        }
 
         if (mover.colliderShape == ColliderShape::Sphere) {
             float radius = mover.GetSphereRadius();
             Vector3 center = mover.GetCenterOfMass();
-            if (!IntersectSphereOBB(center, radius, meshBroadOBB_[meshIndex])) { return; } // 粗い判定で絞り込む
+            // 粗い判定で絞り込む
+            if (!IntersectSphereOBB(center, radius, meshBroadOBB_[meshIndex])) {
+                return;
+            }
 
             Vector3 pushedCenter = center;
             Vector3 normal, contactPoint;
@@ -436,15 +490,21 @@ private:
         // 複雑な形状：自分の実頂点群を相手の三角形へ当てる（スザンヌ対スザンヌなど）
         if (!mover.useMeshCollider || mover.localPositions.empty()) {
             // メッシュを持たない箱なら、相手のOBBを箱とみなした簡易判定にする
-            if (mover.useBoxCollider && mesh.useBoxCollider) { CollectBoxContacts(mover, mesh); }
+            if (mover.useBoxCollider && mesh.useBoxCollider) {
+                CollectBoxContacts(mover, mesh);
+            }
             return;
         }
-        if (!Intersect(mover.GetWorldOBB(), meshBroadOBB_[meshIndex])) { return; }
+        if (!Intersect(mover.GetWorldOBB(), meshBroadOBB_[meshIndex])) {
+            return;
+        }
 
         Matrix4x4 world = MakeAffineMatrix(mover.transform.scale, mover.transform.rotate, mover.transform.translate);
         std::vector<Vector3> worldVerts;
         worldVerts.reserve(mover.localPositions.size());
-        for (const auto& p : mover.localPositions) { worldVerts.push_back(TransformPoint(p, world)); }
+        for (const auto& p : mover.localPositions) {
+            worldVerts.push_back(TransformPoint(p, world));
+        }
 
         Vector3 pushOffset{}, normal{}, contactPoint{};
         if (ResolveVerticesVsMesh(worldVerts, mover.meshVertexRadius, meshTriangleCache_[meshIndex], meshGridCache_[meshIndex], pushOffset, normal, contactPoint)) {
@@ -469,7 +529,9 @@ private:
 
         for (size_t k = 0; k < objects.size(); ++k) {
             Object3D& s = objects[k];
-            if (!s.useMeshCollider || s.localPositions.empty()) { continue; }
+            if (!s.useMeshCollider || s.localPositions.empty()) {
+                continue;
+            }
             if (!meshCacheValid_[k] || !TransformEquals(meshCacheTransform_[k], s.transform)) {
                 Matrix4x4 world = MakeAffineMatrix(s.transform.scale, s.transform.rotate, s.transform.translate);
                 meshTriangleCache_[k] = BuildWorldTriangles(s.localPositions, s.triangleIndices, world);
@@ -491,7 +553,9 @@ private:
     // ===== 速度の積分（外力）=====
     void IntegrateVelocities(std::vector<Object3D>& objects, float deltaTime) {
         for (auto& obj : objects) {
-            if (obj.isStatic) { continue; }
+            if (obj.isStatic) {
+                continue;
+            }
             if (!obj.usePhysics) {
                 // 物理をOFFにしたら運動エネルギーを持ち越さない（ONにした瞬間に過去の速度で動き出すのを防ぐ）
                 obj.velocity = { 0.0f, 0.0f, 0.0f };
@@ -540,7 +604,9 @@ private:
             Vector3 relative = Sub(PointVelocity(c.bodyA, c.rA), PointVelocity(c.bodyB, c.rB));
             float approachSpeed = Dot(relative, c.normal);
             float restitutionBias = 0.0f;
-            if (approachSpeed < -kRestitutionThreshold) { restitutionBias = -c.restitution * approachSpeed; }
+            if (approachSpeed < -kRestitutionThreshold) {
+                restitutionBias = -c.restitution * approachSpeed;
+            }
             c.approachSpeed = -approachSpeed; // イベントには「近づいてきた速さ」を正の値で載せる
 
             c.velocityBias = (std::max)(positionBias, restitutionBias);
@@ -609,14 +675,19 @@ private:
 
         // --- 押し返しのあった接触 ---
         for (const Contact& c : contacts_) {
-            if (c.a->id == 0 || c.b->id == 0) { continue; } // 生成関数を通していない物は追跡できない
+            // 生成関数を通していない物は追跡できない
+            if (c.a->id == 0 || c.b->id == 0) {
+                continue;
+            }
             PairInfo& info = current[MakePairKey(c.a->id, c.b->id)];
             AccumulatePair(info, *c.a, *c.b, c.point, c.normal, c.normalImpulse, c.approachSpeed, false);
         }
 
         // --- トリガーの重なり ---
         for (const TriggerOverlap& o : triggerOverlaps_) {
-            if (o.a->id == 0 || o.b->id == 0) { continue; }
+            if (o.a->id == 0 || o.b->id == 0) {
+                continue;
+            }
             PairInfo& info = current[MakePairKey(o.a->id, o.b->id)];
             AccumulatePair(info, *o.a, *o.b, o.point, o.normal, 0.0f, 0.0f, true);
         }
@@ -630,7 +701,9 @@ private:
 
         // --- 前は触れていたのに今は触れていない組：Exit ---
         for (uint64_t key : touchingPairs_) {
-            if (current.count(key) != 0) { continue; }
+            if (current.count(key) != 0) {
+                continue;
+            }
             auto it = pairHistory_.find(key);
             if (it != pairHistory_.end()) {
                 PairInfo info = it->second;
@@ -638,7 +711,9 @@ private:
                 // IDから今のシーンを引き直し、見つからなければ「消えた物」としてイベントごと捨てる
                 info.a = FindObjectById(info.idA);
                 info.b = FindObjectById(info.idB);
-                if (info.a && info.b) { events_.push_back(MakeEvent(info, CollisionPhase::Exit)); }
+                if (info.a && info.b) {
+                    events_.push_back(MakeEvent(info, CollisionPhase::Exit));
+                }
                 pairHistory_.erase(it);
             }
         }
@@ -646,7 +721,9 @@ private:
         // 次のステップと比べるために、今触れている組を控え直す
         touchingPairs_.clear();
         touchingPairs_.reserve(current.size());
-        for (const auto& entry : current) { touchingPairs_.insert(entry.first); }
+        for (const auto& entry : current) {
+            touchingPairs_.insert(entry.first);
+        }
     }
 
     static void AccumulatePair(PairInfo& info, Object3D& a, Object3D& b, const Vector3& point,
@@ -694,12 +771,18 @@ private:
         const float kMaxAngularSpeed = 30.0f; // rad/s
 
         for (auto& obj : objects) {
-            if (obj.isStatic || !obj.usePhysics) { continue; }
+            if (obj.isStatic || !obj.usePhysics) {
+                continue;
+            }
 
             float speedSq = LengthSq(obj.velocity);
-            if (speedSq > kMaxSpeed * kMaxSpeed) { obj.velocity = Scale(obj.velocity, kMaxSpeed / sqrtf(speedSq)); }
+            if (speedSq > kMaxSpeed * kMaxSpeed) {
+                obj.velocity = Scale(obj.velocity, kMaxSpeed / sqrtf(speedSq));
+            }
             float angSpeedSq = LengthSq(obj.angularVelocity);
-            if (angSpeedSq > kMaxAngularSpeed * kMaxAngularSpeed) { obj.angularVelocity = Scale(obj.angularVelocity, kMaxAngularSpeed / sqrtf(angSpeedSq)); }
+            if (angSpeedSq > kMaxAngularSpeed * kMaxAngularSpeed) {
+                obj.angularVelocity = Scale(obj.angularVelocity, kMaxAngularSpeed / sqrtf(angSpeedSq));
+            }
 
             // 剛体は重心まわりに回る。ところがtransform.translateが指すのは「ローカル原点」であって
             // 重心とは限らない（objモデルは形状の中心が原点からずれていることが多い）。
@@ -714,8 +797,13 @@ private:
             // 積分の丸め誤差が積もるとわずかにずれるため、ここで確実に打ち消しておく
             if (obj.rotationMode == RotationMode::PlanarZ || obj.rotationMode == RotationMode::UprightLock) {
                 Vector3 euler = EulerXYZFromQuaternion(obj.orientation);
-                if (obj.rotationMode == RotationMode::PlanarZ) { euler.x = 0.0f; euler.y = 0.0f; }
-                else { euler.x = 0.0f; euler.z = 0.0f; }
+                if (obj.rotationMode == RotationMode::PlanarZ) {
+                    euler.x = 0.0f;
+                    euler.y = 0.0f;
+                } else {
+                    euler.x = 0.0f;
+                    euler.z = 0.0f;
+                }
                 obj.orientation = QuaternionFromEulerXYZ(euler);
             }
 
@@ -733,11 +821,17 @@ private:
         const float kSleepDelay = 0.35f;        // 秒
 
         for (auto& obj : objects) {
-            if (obj.isStatic || !obj.usePhysics) { obj.sleepTimer = 0.0f; continue; }
+            if (obj.isStatic || !obj.usePhysics) {
+                obj.sleepTimer = 0.0f;
+                continue;
+            }
 
             bool slow = LengthSq(obj.velocity) < kSleepLinearSpeed * kSleepLinearSpeed &&
                         LengthSq(obj.angularVelocity) < kSleepAngularSpeed * kSleepAngularSpeed;
-            if (!slow) { obj.sleepTimer = 0.0f; continue; }
+            if (!slow) {
+                obj.sleepTimer = 0.0f;
+                continue;
+            }
 
             obj.sleepTimer += deltaTime;
             if (obj.sleepTimer >= kSleepDelay) {

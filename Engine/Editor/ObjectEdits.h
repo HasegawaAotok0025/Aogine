@@ -46,7 +46,9 @@ struct ObjectEdit {
         obj.transform.rotate = rotate;
         obj.transform.scale = scale;
         obj.materialData->color = color;
-        if (blendMode >= 0 && blendMode < (int)BlendMode::kCount) { obj.blendMode = (BlendMode)blendMode; }
+        if (blendMode >= 0 && blendMode < (int)BlendMode::kCount) {
+            obj.blendMode = (BlendMode)blendMode;
+        }
         obj.lightingMode = lightingMode;
         obj.untextured = untextured;
         obj.uvTransform.scale = uvScale;
@@ -82,7 +84,9 @@ inline std::vector<std::string> MakeObjectEditKeys(const std::vector<Object3D>& 
 // 1行＝1つの物。タブ区切り。先頭がキー
 inline void SaveObjectEdits(const std::map<std::string, ObjectEdit>& edits, const char* path = kObjectEditsFile) {
     std::ofstream file(path, std::ios::trunc);
-    if (!file) { return; }
+    if (!file) {
+        return;
+    }
     file << "# Aogine saved edits (key, visible, translate, rotate, scale, color, blend, lighting, untextured, uvScale, uvRotate, uvTranslate)\n";
     file.precision(9);
     for (const auto& [key, e] : edits) {
@@ -103,12 +107,19 @@ inline std::map<std::string, ObjectEdit> LoadObjectEdits(const char* path = kObj
     std::ifstream file(path);
     std::string line;
     while (std::getline(file, line)) {
-        if (line.empty() || line[0] == '#') { continue; }
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
         std::vector<std::string> cols;
         std::stringstream ss(line);
         std::string col;
-        while (std::getline(ss, col, '\t')) { cols.push_back(col); }
-        if (cols.size() < 12) { continue; } // 壊れた行は読み飛ばす
+        while (std::getline(ss, col, '\t')) {
+            cols.push_back(col);
+        }
+        // 壊れた行は読み飛ばす
+        if (cols.size() < 12) {
+            continue;
+        }
 
         ObjectEdit e;
         int flag = 0;

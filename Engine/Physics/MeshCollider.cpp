@@ -19,12 +19,18 @@ namespace {
 
         float d1 = Dot(ab, ap);
         float d2 = Dot(ac, ap);
-        if (d1 <= 0.0f && d2 <= 0.0f) { return a; } // 頂点aの外側の領域
+        // 頂点aの外側の領域
+        if (d1 <= 0.0f && d2 <= 0.0f) {
+            return a;
+        }
 
         Vector3 bp = Sub(p, b);
         float d3 = Dot(ab, bp);
         float d4 = Dot(ac, bp);
-        if (d3 >= 0.0f && d4 <= d3) { return b; } // 頂点bの外側の領域
+        // 頂点bの外側の領域
+        if (d3 >= 0.0f && d4 <= d3) {
+            return b;
+        }
 
         float vc = d1 * d4 - d3 * d2;
         if (vc <= 0.0f && d1 >= 0.0f && d3 <= 0.0f) {
@@ -35,7 +41,10 @@ namespace {
         Vector3 cp = Sub(p, c);
         float d5 = Dot(ab, cp);
         float d6 = Dot(ac, cp);
-        if (d6 >= 0.0f && d5 <= d6) { return c; } // 頂点cの外側の領域
+        // 頂点cの外側の領域
+        if (d6 >= 0.0f && d5 <= d6) {
+            return c;
+        }
 
         float vb = d5 * d2 - d1 * d6;
         if (vb <= 0.0f && d2 >= 0.0f && d6 <= 0.0f) {
@@ -72,7 +81,9 @@ std::vector<Triangle> BuildWorldTriangles(const std::vector<Vector3>& localPosit
 
 TriangleGrid BuildTriangleGrid(const std::vector<Triangle>& triangles) {
     TriangleGrid grid;
-    if (triangles.empty()) { return grid; }
+    if (triangles.empty()) {
+        return grid;
+    }
 
     Vector3 meshMin{ (std::numeric_limits<float>::max)(), (std::numeric_limits<float>::max)(), (std::numeric_limits<float>::max)() };
     Vector3 meshMax{ -(std::numeric_limits<float>::max)(), -(std::numeric_limits<float>::max)(), -(std::numeric_limits<float>::max)() };
@@ -109,7 +120,9 @@ TriangleGrid BuildTriangleGrid(const std::vector<Triangle>& triangles) {
 
 void QueryTriangleGrid(const TriangleGrid& grid, const Vector3& center, float radius, std::vector<uint32_t>& outCandidates) {
     outCandidates.clear();
-    if (grid.cells.empty()) { return; }
+    if (grid.cells.empty()) {
+        return;
+    }
 
     int x0 = (int)std::floor((center.x - radius) / grid.cellSize), x1 = (int)std::floor((center.x + radius) / grid.cellSize);
     int y0 = (int)std::floor((center.y - radius) / grid.cellSize), y1 = (int)std::floor((center.y + radius) / grid.cellSize);
@@ -140,7 +153,9 @@ bool ResolveSphereVsMesh(Vector3& center, float radius, const std::vector<Triang
         Vector3 closest = ClosestPointOnTriangle(center, tri.a, tri.b, tri.c);
         Vector3 diff = Sub(center, closest);
         float dist = Length(diff);
-        if (dist >= radius) { continue; }
+        if (dist >= radius) {
+            continue;
+        }
 
         float penetration = radius - dist;
         Vector3 normal;
@@ -186,7 +201,9 @@ bool ResolveVerticesVsMesh(const std::vector<Vector3>& worldVertices, float vert
             Vector3 closest = ClosestPointOnTriangle(v, tri.a, tri.b, tri.c);
             Vector3 diff = Sub(v, closest);
             float dist = Length(diff);
-            if (dist >= vertexRadius) { continue; }
+            if (dist >= vertexRadius) {
+                continue;
+            }
 
             float penetration = vertexRadius - dist;
             Vector3 normal;

@@ -37,7 +37,9 @@ inline Quaternion Multiply(const Quaternion& a, const Quaternion& b) {
 
 inline Quaternion Normalize(const Quaternion& q) {
     float lenSq = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
-    if (lenSq < 1e-12f) { return QuaternionIdentity(); }
+    if (lenSq < 1e-12f) {
+        return QuaternionIdentity();
+    }
     float inv = 1.0f / sqrtf(lenSq);
     return Quaternion{ q.x * inv, q.y * inv, q.z * inv, q.w * inv };
 }

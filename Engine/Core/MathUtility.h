@@ -33,7 +33,9 @@ inline float Length(const Vector3& v) { return std::sqrt(Dot(v, v)); }
 // 長さ1にする。長さがほぼ0で向きが決まらないときは fallback を返す
 inline Vector3 Normalize(const Vector3& v, const Vector3& fallback = { 0.0f, 1.0f, 0.0f }) {
     float lenSq = LengthSq(v);
-    if (lenSq < 1e-12f) { return fallback; }
+    if (lenSq < 1e-12f) {
+        return fallback;
+    }
     return Scale(v, 1.0f / std::sqrt(lenSq));
 }
 
@@ -131,7 +133,9 @@ inline Matrix4x4 Inverse4x4(const Matrix4x4& src) {
             }
         }
         if (maxRow != pivot) {
-            for (int col = 0; col < 8; col++) { std::swap(a[pivot][col], a[maxRow][col]); }
+            for (int col = 0; col < 8; col++) {
+                std::swap(a[pivot][col], a[maxRow][col]);
+            }
         }
 
         float pivotVal = a[pivot][pivot];
@@ -139,12 +143,18 @@ inline Matrix4x4 Inverse4x4(const Matrix4x4& src) {
             // 逆行列が存在しない場合は単位行列を返しておく（安全側の挙動）
             return MakeIdentity4x4();
         }
-        for (int col = 0; col < 8; col++) { a[pivot][col] /= pivotVal; }
+        for (int col = 0; col < 8; col++) {
+            a[pivot][col] /= pivotVal;
+        }
 
         for (int row = 0; row < 4; row++) {
-            if (row == pivot) { continue; }
+            if (row == pivot) {
+                continue;
+            }
             float factor = a[row][pivot];
-            for (int col = 0; col < 8; col++) { a[row][col] -= factor * a[pivot][col]; }
+            for (int col = 0; col < 8; col++) {
+                a[row][col] -= factor * a[pivot][col];
+            }
         }
     }
 
@@ -179,7 +189,9 @@ inline bool WorldToScreen(const Vector3& world, const Matrix4x4& viewProjection,
     float x = world.x * m.m[0][0] + world.y * m.m[1][0] + world.z * m.m[2][0] + m.m[3][0];
     float y = world.x * m.m[0][1] + world.y * m.m[1][1] + world.z * m.m[2][1] + m.m[3][1];
     float w = world.x * m.m[0][3] + world.y * m.m[1][3] + world.z * m.m[2][3] + m.m[3][3];
-    if (w <= 1e-5f) { return false; }
+    if (w <= 1e-5f) {
+        return false;
+    }
 
     out.x = (x / w * 0.5f + 0.5f) * screenWidth;
     out.y = (0.5f - y / w * 0.5f) * screenHeight; // 画面のYは下向きなので上下を入れ替える

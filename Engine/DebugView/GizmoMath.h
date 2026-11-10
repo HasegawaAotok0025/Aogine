@@ -29,14 +29,20 @@ static_assert(RingBasisMatchesAxis(0) && RingBasisMatchesAxis(1) && RingBasisMat
 
 // 値を一定の刻みに揃える。stepが0以下なら何もしない
 inline float SnapTo(float value, float step) {
-    if (step <= 0.0f) { return value; }
+    if (step <= 0.0f) {
+        return value;
+    }
     return roundf(value / step) * step;
 }
 
 // 角度を -π〜π に畳む。輪を回し続けたとき、±180度をまたいだ瞬間に1回転ぶん飛ぶのを防ぐ
 inline float WrapAngle(float angle) {
-    while (angle > kPi) { angle -= kTwoPi; }
-    while (angle < -kPi) { angle += kTwoPi; }
+    while (angle > kPi) {
+        angle -= kTwoPi;
+    }
+    while (angle < -kPi) {
+        angle += kTwoPi;
+    }
     return angle;
 }
 
@@ -63,7 +69,10 @@ inline float ClosestTOnAxis(const Vector3& axisOrigin, const Vector3& axisDir,
     float c = Dot(axisDir, r);
     float f = Dot(rayDir, r);
     float denom = 1.0f - b * b;
-    if (fabsf(denom) < 1e-6f) { return 0.0f; } // 軸を真正面から見ている
+    // 軸を真正面から見ている
+    if (fabsf(denom) < 1e-6f) {
+        return 0.0f;
+    }
     return (b * f - c) / denom;
 }
 
@@ -71,10 +80,14 @@ inline float ClosestTOnAxis(const Vector3& axisOrigin, const Vector3& axisDir,
 inline bool RayPlaneIntersect(const Vector3& rayOrigin, const Vector3& rayDir,
                               const Vector3& planePoint, const Vector3& planeNormal, Vector3& out) {
     float denom = Dot(rayDir, planeNormal);
-    if (fabsf(denom) < 1e-4f) { return false; }
+    if (fabsf(denom) < 1e-4f) {
+        return false;
+    }
     Vector3 diff{ planePoint.x - rayOrigin.x, planePoint.y - rayOrigin.y, planePoint.z - rayOrigin.z };
     float t = Dot(diff, planeNormal) / denom;
-    if (t < 0.0f) { return false; }
+    if (t < 0.0f) {
+        return false;
+    }
     out = AddScaled(rayOrigin, rayDir, t);
     return true;
 }

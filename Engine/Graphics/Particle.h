@@ -88,10 +88,16 @@ inline bool DeserializeEmitter(const std::string& text, ParticleEmitter& e) {
       >> r.startColor.x >> r.startColor.y >> r.startColor.z >> r.startColor.w
       >> r.endColor.x >> r.endColor.y >> r.endColor.z >> r.endColor.w
       >> blend >> soft >> r.maxParticles;
-    if (s.fail()) { return false; } // 壊れた行は使わない
+    // 壊れた行は使わない
+    if (s.fail()) {
+        return false;
+    }
     // あとから足した項目。古い保存ファイルには無いので、読めなければ今の値のまま
     int billboard = r.billboard ? 1 : 0, uvChecker = r.uvChecker ? 1 : 0;
-    if (s >> billboard >> uvChecker) { r.billboard = billboard != 0; r.uvChecker = uvChecker != 0; }
+    if (s >> billboard >> uvChecker) {
+        r.billboard = billboard != 0;
+        r.uvChecker = uvChecker != 0;
+    }
     r.enabled = enabled != 0;
     r.soft = soft != 0;
     r.blendMode = (blend >= 0 && blend < (int)BlendMode::kCount) ? (BlendMode)blend : BlendMode::kAdd;
@@ -251,8 +257,12 @@ public:
 
     // まとめて出す（爆発・着弾など）。上限を超える分は出さない
     void Burst(int id, int count) {
-        if (id < 0 || id >= (int)emitters_.size()) { return; }
-        for (int i = 0; i < count; ++i) { Spawn(emitters_[id]); }
+        if (id < 0 || id >= (int)emitters_.size()) {
+            return;
+        }
+        for (int i = 0; i < count; ++i) {
+            Spawn(emitters_[id]);
+        }
     }
 
     // ----- 毎フレーム -----
@@ -260,7 +270,10 @@ public:
         for (ParticleEmitter& e : emitters_) {
             if (e.enabled && e.rate > 0.0f) {
                 e.emitAccumulator += e.rate * dt;
-                while (e.emitAccumulator >= 1.0f) { e.emitAccumulator -= 1.0f; Spawn(e); }
+                while (e.emitAccumulator >= 1.0f) {
+                    e.emitAccumulator -= 1.0f;
+                    Spawn(e);
+                }
             } else {
                 e.emitAccumulator = 0.0f;
             }
@@ -279,7 +292,9 @@ public:
                 if (e.particles[i].age >= e.particles[i].lifetime) {
                     e.particles[i] = e.particles.back();
                     e.particles.pop_back();
-                } else { ++i; }
+                } else {
+                    ++i;
+                }
             }
         }
     }
@@ -287,19 +302,28 @@ public:
     // 位置を指定して1つ出す。位置以外の項目（寿命・速さ・大きさ・色）はエミッターの設定に従う。
     // 速さを0・重力を0にしておけば、その場に置いたままの板になる
     void SpawnAt(int id, const Vector3& position) {
-        if (id < 0 || id >= (int)emitters_.size()) { return; }
+        if (id < 0 || id >= (int)emitters_.size()) {
+            return;
+        }
         Spawn(emitters_[id], &position);
     }
 
     // 出ている粒をすべて消す
-    void Clear() { for (ParticleEmitter& e : emitters_) { e.particles.clear(); e.emitAccumulator = 0.0f; } }
+    void Clear() {
+        for (ParticleEmitter& e : emitters_) {
+            e.particles.clear();
+            e.emitAccumulator = 0.0f;
+        }
+    }
     // 粒を出す口ごと全部なくす（場面の切り替え）。それまでの番号は使えなくなる
     void RemoveAllEmitters() { emitters_.clear(); snapshot_.clear(); }
 
     // 今出ている粒の数（表示用）
     uint32_t ParticleCount() const {
         uint32_t n = 0;
-        for (const ParticleEmitter& e : emitters_) { n += (uint32_t)e.particles.size(); }
+        for (const ParticleEmitter& e : emitters_) {
+            n += (uint32_t)e.particles.size();
+        }
         return n;
     }
 
@@ -307,7 +331,9 @@ public:
     void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewProjection,
               const Vector3& cameraRight, const Vector3& cameraUp, const Vector3& cameraForward,
               D3D12_GPU_DESCRIPTOR_HANDLE whiteTextureSrv, D3D12_GPU_DESCRIPTOR_HANDLE uvCheckerSrv) {
-        if (ParticleCount() == 0) { return; }
+        if (ParticleCount() == 0) {
+            return;
+        }
 
         commandList->SetGraphicsRootSignature(pipeline_.rootSignature.Get());
         commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -318,11 +344,15 @@ public:
         uint32_t used = 0; // 配列のどこまで書いたか
         std::vector<const Particle*> sorted;
         for (ParticleEmitter& e : emitters_) {
-            if (e.particles.empty()) { continue; }
+            if (e.particles.empty()) {
+                continue;
+            }
 
             // 通常のαブレンドは、奥から順に重ねないと前後が逆に見える。加算などは順番に依らない
             sorted.clear();
-            for (const Particle& p : e.particles) { sorted.push_back(&p); }
+            for (const Particle& p : e.particles) {
+                sorted.push_back(&p);
+            }
             if (e.blendMode == BlendMode::kNormal) {
                 auto depth = [&](const Particle* p) {
                     return p->position.x * cameraForward.x + p->position.y * cameraForward.y + p->position.z * cameraForward.z;
@@ -332,7 +362,10 @@ public:
 
             const uint32_t first = used;
             for (const Particle* p : sorted) {
-                if (used >= kMaxInstances) { break; } // 用意した数を超える分は描かない
+                // 用意した数を超える分は描かない
+                if (used >= kMaxInstances) {
+                    break;
+                }
                 const float t = (std::min)(p->age / p->lifetime, 1.0f);
                 const float size = p->sizeStart + (p->sizeEnd - p->sizeStart) * t;
 
@@ -358,7 +391,9 @@ public:
                 };
             }
             const uint32_t count = used - first;
-            if (count == 0) { continue; }
+            if (count == 0) {
+                continue;
+            }
 
             const uint32_t constants[2] = { first, e.soft ? 1u : 0u };
             commandList->SetGraphicsRoot32BitConstants(0, 2, constants, 0);
@@ -374,7 +409,11 @@ public:
 
     static std::string EmitterKey(const std::vector<ParticleEmitter>& list, size_t index) {
         int n = 0;
-        for (size_t i = 0; i < index; ++i) { if (list[i].name == list[index].name) { ++n; } }
+        for (size_t i = 0; i < index; ++i) {
+            if (list[i].name == list[index].name) {
+                ++n;
+            }
+        }
         return list[index].name + "#" + std::to_string(n);
     }
 
@@ -384,21 +423,29 @@ public:
         std::ifstream file(kFile);
         std::string line;
         while (std::getline(file, line)) {
-            if (line.empty() || line[0] == '#') { continue; }
+            if (line.empty() || line[0] == '#') {
+                continue;
+            }
             size_t tab = line.find('\t');
-            if (tab == std::string::npos) { continue; }
+            if (tab == std::string::npos) {
+                continue;
+            }
             saved_[line.substr(0, tab)] = line.substr(tab + 1);
         }
         for (size_t i = 0; i < emitters_.size(); ++i) {
             auto it = saved_.find(EmitterKey(emitters_, i));
-            if (it != saved_.end()) { DeserializeEmitter(it->second, emitters_[i]); }
+            if (it != saved_.end()) {
+                DeserializeEmitter(it->second, emitters_[i]);
+            }
         }
     }
 
     // デバッグビューに入った時点の内容を控える／そこから変わった物だけを書く（Object3Dの保存と同じ考え方）
     void BeginEditSession() {
         snapshot_.clear();
-        for (size_t i = 0; i < emitters_.size(); ++i) { snapshot_[EmitterKey(emitters_, i)] = SerializeEmitter(emitters_[i]); }
+        for (size_t i = 0; i < emitters_.size(); ++i) {
+            snapshot_[EmitterKey(emitters_, i)] = SerializeEmitter(emitters_[i]);
+        }
     }
     void SaveEdits() {
         bool changed = false;
@@ -406,15 +453,21 @@ public:
             const std::string key = EmitterKey(emitters_, i);
             const std::string now = SerializeEmitter(emitters_[i]);
             auto snap = snapshot_.find(key);
-            if (snap != snapshot_.end() && snap->second == now) { continue; }
+            if (snap != snapshot_.end() && snap->second == now) {
+                continue;
+            }
             saved_[key] = now;
             snapshot_[key] = now;
             changed = true;
         }
-        if (!changed) { return; }
+        if (!changed) {
+            return;
+        }
         std::ofstream file(kFile, std::ios::trunc);
         file << "# Aogine saved particle emitters (key \\t settings)\n";
-        for (const auto& [key, text] : saved_) { file << key << '\t' << text << '\n'; }
+        for (const auto& [key, text] : saved_) {
+            file << key << '\t' << text << '\n';
+        }
     }
 
 private:
@@ -453,7 +506,9 @@ private:
 
     // 粒を1つ出す。向きは「direction を軸にした円錐の中」からランダムに選ぶ
     void Spawn(ParticleEmitter& e, const Vector3* at = nullptr) {
-        if ((int)e.particles.size() >= e.maxParticles) { return; }
+        if ((int)e.particles.size() >= e.maxParticles) {
+            return;
+        }
 
         Vector3 d = e.direction;
         float len = std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
@@ -504,10 +559,15 @@ private:
 inline void DrawParticlePanel(ParticleSystem& system) {
     ImGui::SetNextWindowPos(ImVec2(380.0f, 8.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(360.0f, 480.0f), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Particles")) { ImGui::End(); return; }
+    if (!ImGui::Begin("Particles")) {
+        ImGui::End();
+        return;
+    }
 
     ImGui::Text("particles: %u / %u", system.ParticleCount(), ParticleSystem::kMaxInstances);
-    if (ImGui::Button("Clear")) { system.Clear(); }
+    if (ImGui::Button("Clear")) {
+        system.Clear();
+    }
     ImGui::Separator();
 
     static const char* kBlendNames[] = { "None", "Normal", "Add", "Subtract", "Multiply", "Screen" };
@@ -518,7 +578,9 @@ inline void DrawParticlePanel(ParticleSystem& system) {
         if (ImGui::CollapsingHeader(e.name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Checkbox("enabled", &e.enabled);
             ImGui::SameLine();
-            if (ImGui::Button("Burst 30")) { system.Burst(i, 30); }
+            if (ImGui::Button("Burst 30")) {
+                system.Burst(i, 30);
+            }
             ImGui::DragFloat3("position", &e.position.x, 0.05f);
             ImGui::DragFloat("rate (/s)", &e.rate, 0.5f, 0.0f, 2000.0f);
             ImGui::DragInt("max particles", &e.maxParticles, 1.0f, 0, (int)ParticleSystem::kMaxInstances);
@@ -532,7 +594,9 @@ inline void DrawParticlePanel(ParticleSystem& system) {
             ImGui::ColorEdit4("start color", &e.startColor.x);
             ImGui::ColorEdit4("end color", &e.endColor.x);
             int blend = (int)e.blendMode;
-            if (ImGui::Combo("blendMode", &blend, kBlendNames, (int)BlendMode::kCount)) { e.blendMode = (BlendMode)blend; }
+            if (ImGui::Combo("blendMode", &blend, kBlendNames, (int)BlendMode::kCount)) {
+                e.blendMode = (BlendMode)blend;
+            }
             ImGui::Checkbox("soft circle", &e.soft);
             ImGui::Checkbox("billboard", &e.billboard);
             ImGui::SameLine();
@@ -540,7 +604,9 @@ inline void DrawParticlePanel(ParticleSystem& system) {
         }
         ImGui::PopID();
     }
-    if (list.empty()) { ImGui::TextDisabled("No emitters. Use engine.AddParticleEmitter()."); }
+    if (list.empty()) {
+        ImGui::TextDisabled("No emitters. Use engine.AddParticleEmitter().");
+    }
 
     ImGui::End();
 }

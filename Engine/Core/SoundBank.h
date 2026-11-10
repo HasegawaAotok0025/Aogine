@@ -63,10 +63,15 @@ public:
     int LoadAll(AudioEngine& audio) {
         int loaded = 0;
         for (auto& [name, entry] : entries_) {
-            if (entry.loaded) { ++loaded; continue; }
+            if (entry.loaded) {
+                ++loaded;
+                continue;
+            }
             entry.data = audio.LoadAudio(entry.filePath); // WAVのほか、mp3なども読める
             entry.loaded = entry.data.IsLoaded();
-            if (entry.loaded) { ++loaded; }
+            if (entry.loaded) {
+                ++loaded;
+            }
         }
         audio_ = &audio;
         return loaded;
@@ -75,7 +80,10 @@ public:
     void UnloadAll(AudioEngine& audio) {
         StopMusic();
         for (auto& [name, entry] : entries_) {
-            if (entry.loaded) { audio.Unload(entry.data); entry.loaded = false; }
+            if (entry.loaded) {
+                audio.Unload(entry.data);
+                entry.loaded = false;
+            }
         }
         audio_ = nullptr;
     }
@@ -83,40 +91,59 @@ public:
     // 効果音を1回鳴らす。名前が無ければ何もしない。
     // volumeScaleは、その場かぎりの上乗せ（遠くで鳴った音を小さくする、などに使う）
     void Play(const std::string& name, float volumeScale = 1.0f, float pitch = 1.0f) {
-        if (muted || audio_ == nullptr) { return; }
+        if (muted || audio_ == nullptr) {
+            return;
+        }
         Entry* entry = Find(name);
-        if (entry == nullptr || !entry->loaded) { return; }
+        if (entry == nullptr || !entry->loaded) {
+            return;
+        }
         audio_->PlayOneShot(entry->data, entry->volumeScale * volumeScale * masterVolume, pitch);
     }
 
     // 曲を流す。すでに同じ名前が流れているなら何もしない
     //（場面ごとに毎フレーム呼んでも鳴らし直しにならないようにしてある）
     void PlayMusic(const std::string& name) {
-        if (audio_ == nullptr) { return; }
+        if (audio_ == nullptr) {
+            return;
+        }
         if (musicName_ == name && musicVoice_.IsValid()) {
             ApplyVolumes();
             return;
         }
         StopMusic();
-        if (muted) { musicName_ = name; return; } // 消音中も「何を流すつもりか」は覚えておく
+        // 消音中も「何を流すつもりか」は覚えておく
+        if (muted) {
+            musicName_ = name;
+            return;
+        }
         Entry* entry = Find(name);
-        if (entry == nullptr || !entry->loaded) { return; }
+        if (entry == nullptr || !entry->loaded) {
+            return;
+        }
         musicVoice_ = audio_->Play(entry->data, true, entry->volumeScale * musicVolume * masterVolume);
         musicName_ = name;
     }
 
     void StopMusic() {
-        if (musicVoice_.IsValid()) { musicVoice_.Stop(); }
+        if (musicVoice_.IsValid()) {
+            musicVoice_.Stop();
+        }
         musicVoice_ = SoundVoice{};
         musicName_.clear();
     }
 
     // 消音の切り替え。流れている曲にも即座に効かせる
     void SetMuted(bool value) {
-        if (muted == value) { return; }
+        if (muted == value) {
+            return;
+        }
         muted = value;
         if (muted) {
-            if (musicVoice_.IsValid()) { musicVoice_.Stop(); musicVoice_ = SoundVoice{}; }
+            if (musicVoice_.IsValid()) {
+                musicVoice_.Stop();
+                musicVoice_ = SoundVoice{};
+            }
         } else if (!musicName_.empty()) {
             std::string again = musicName_;
             musicName_.clear();
@@ -126,7 +153,9 @@ public:
 
     // 全体・曲の音量を変えたあとに呼ぶと、流れている曲にも効く
     void ApplyVolumes() {
-        if (musicVoice_.IsValid()) { musicVoice_.SetVolume(muted ? 0.0f : musicVolume * masterVolume); }
+        if (musicVoice_.IsValid()) {
+            musicVoice_.SetVolume(muted ? 0.0f : musicVolume * masterVolume);
+        }
     }
 
     bool Has(const std::string& name) const { return entries_.find(name) != entries_.end(); }

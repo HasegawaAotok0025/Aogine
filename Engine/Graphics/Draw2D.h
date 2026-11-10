@@ -42,7 +42,9 @@ struct Camera2D {
 
     // 揺らす。今より弱い指示は無視する（弱い揺れが強い揺れを打ち消さないように）
     void Shake(float strength) {
-        if (strength > shakeStrength) { shakeStrength = strength; }
+        if (strength > shakeStrength) {
+            shakeStrength = strength;
+        }
     }
 
     void Update(float deltaTime) {
@@ -56,7 +58,9 @@ struct Camera2D {
         shakeOffset = { cosf(shakeAngle_ * 6.1f) * shakeStrength,
                         sinf(shakeAngle_ * 7.3f) * shakeStrength };
         shakeStrength -= shakeDecayPerSecond * deltaTime;
-        if (shakeStrength < 0.0f) { shakeStrength = 0.0f; }
+        if (shakeStrength < 0.0f) {
+            shakeStrength = 0.0f;
+        }
     }
 
     void Reset() {
@@ -183,7 +187,9 @@ inline Matrix4x4 MakeScreenRectMatrix(float centerX, float centerY, float width,
 // widthとheightは「画面の縦を2としたときの大きさ」で渡すこと
 inline Matrix4x4 MakeScreenRectMatrixRotated(float centerX, float centerY, float width, float height,
                                              float rotation, float aspect) {
-    if (aspect <= 1e-4f) { aspect = 1.0f; }
+    if (aspect <= 1e-4f) {
+        aspect = 1.0f;
+    }
     float c = cosf(rotation);
     float s = sinf(rotation);
 

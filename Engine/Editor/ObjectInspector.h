@@ -15,20 +15,30 @@
 inline void DrawObjectInspector(std::vector<Object3D>& objects, uint32_t& selectedId) {
     ImGui::SetNextWindowPos(ImVec2(8.0f, 8.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(360.0f, 560.0f), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Inspector")) { ImGui::End(); return; }
+    if (!ImGui::Begin("Inspector")) {
+        ImGui::End();
+        return;
+    }
 
     // ----- 一覧 -----
     ImGui::TextUnformatted("Objects");
     if (ImGui::BeginChild("##objects", ImVec2(0.0f, 130.0f), true)) {
         for (Object3D& obj : objects) {
             std::string label = (obj.name.empty() ? std::string("(no name)") : obj.name) + "##" + std::to_string(obj.id);
-            if (ImGui::Selectable(label.c_str(), obj.id == selectedId)) { selectedId = obj.id; }
+            if (ImGui::Selectable(label.c_str(), obj.id == selectedId)) {
+                selectedId = obj.id;
+            }
         }
     }
     ImGui::EndChild();
 
     Object3D* obj = nullptr;
-    for (Object3D& o : objects) { if (o.id == selectedId) { obj = &o; break; } }
+    for (Object3D& o : objects) {
+        if (o.id == selectedId) {
+            obj = &o;
+            break;
+        }
+    }
     if (!obj) {
         ImGui::TextDisabled("Select an object.");
         ImGui::End();
@@ -53,7 +63,9 @@ inline void DrawObjectInspector(std::vector<Object3D>& objects, uint32_t& select
 
         static const char* kBlendNames[] = { "None", "Normal", "Add", "Subtract", "Multiply", "Screen" };
         int blend = (int)obj->blendMode;
-        if (ImGui::Combo("blendMode", &blend, kBlendNames, (int)BlendMode::kCount)) { obj->blendMode = (BlendMode)blend; }
+        if (ImGui::Combo("blendMode", &blend, kBlendNames, (int)BlendMode::kCount)) {
+            obj->blendMode = (BlendMode)blend;
+        }
         if (obj->blendMode == BlendMode::kNone && obj->materialData->color.w < 1.0f) {
             ImGui::TextDisabled("blendMode is None: alpha has no effect.");
         }

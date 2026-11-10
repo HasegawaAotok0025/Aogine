@@ -131,7 +131,9 @@ public:
     ~ComponentList() = default;
     ComponentList(const ComponentList& other) { CopyFrom(other); }
     ComponentList& operator=(const ComponentList& other) {
-        if (this != &other) { CopyFrom(other); }
+        if (this != &other) {
+            CopyFrom(other);
+        }
         return *this;
     }
     ComponentList(ComponentList&&) noexcept = default;
@@ -146,7 +148,9 @@ public:
     template <class T>
     T* Get() {
         for (auto& item : items_) {
-            if (T* typed = dynamic_cast<T*>(item.get())) { return typed; }
+            if (T* typed = dynamic_cast<T*>(item.get())) {
+                return typed;
+            }
         }
         return nullptr;
     }
@@ -160,7 +164,9 @@ public:
     template <class T, class... Args>
     T* Add(Args&&... args) {
         if (T* existing = Get<T>()) {
-            if (!existing->AllowsMultiple()) { return existing; }
+            if (!existing->AllowsMultiple()) {
+                return existing;
+            }
         }
         auto owned = std::make_unique<T>(std::forward<Args>(args)...);
         T* raw = owned.get();
@@ -169,7 +175,9 @@ public:
     }
 
     void RemoveAt(size_t index) {
-        if (index < items_.size()) { items_.erase(items_.begin() + (ptrdiff_t)index); }
+        if (index < items_.size()) {
+            items_.erase(items_.begin() + (ptrdiff_t)index);
+        }
     }
 
     template <class T>
@@ -190,7 +198,9 @@ public:
         size_t count = items_.size();
         for (size_t i = 0; i < count && i < items_.size(); ++i) {
             Component* item = items_[i].get();
-            if (!item || !item->enabled) { continue; }
+            if (!item || !item->enabled) {
+                continue;
+            }
             if (!item->started_) {
                 item->started_ = true;
                 item->OnStart(ctx);
@@ -204,7 +214,9 @@ public:
         size_t count = items_.size();
         for (size_t i = 0; i < count && i < items_.size(); ++i) {
             Component* item = items_[i].get();
-            if (item && item->enabled) { item->OnCollision(ctx, hit); }
+            if (item && item->enabled) {
+                item->OnCollision(ctx, hit);
+            }
         }
     }
 

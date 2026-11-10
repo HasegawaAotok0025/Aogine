@@ -59,10 +59,16 @@ public:
         draw2DPipeline_ = CreateDraw2DPipeline(gfx_.device.Get(), pipeline_); // 2Dの図形と絵
         draw2DQuadMesh_ = CreateDraw2DQuadMesh(gfx_.device.Get());
         draw2DCircleMesh_ = CreateDraw2DCircleMesh(gfx_.device.Get());
-        for (int i = 0; i < kMaxDraw2D; ++i) { draw2DTransformBuffers_.push_back(CreateLineTransformBuffer(gfx_.device.Get())); }
-        for (int i = 0; i < kMaxShadows; ++i) { shadowTransformBuffers_.push_back(CreateLineTransformBuffer(gfx_.device.Get())); }
+        for (int i = 0; i < kMaxDraw2D; ++i) {
+            draw2DTransformBuffers_.push_back(CreateLineTransformBuffer(gfx_.device.Get()));
+        }
+        for (int i = 0; i < kMaxShadows; ++i) {
+            shadowTransformBuffers_.push_back(CreateLineTransformBuffer(gfx_.device.Get()));
+        }
         // 当たり判定の枠（デバッグ表示）用のWVP定数バッファ。1本を使い回すと前の値を上書きしてしまうので数を用意する
-        for (int i = 0; i < kLineTransformBufferCount; ++i) { lineTransformBuffers_.push_back(CreateLineTransformBuffer(gfx_.device.Get())); }
+        for (int i = 0; i < kLineTransformBufferCount; ++i) {
+            lineTransformBuffers_.push_back(CreateLineTransformBuffer(gfx_.device.Get()));
+        }
         textures_ = LoadDefaultTextures(gfx_);
         light_ = CreateDirectionalLightResource(gfx_.device.Get());
         text_.Initialize(gfx_, pipeline_);
@@ -129,7 +135,9 @@ public:
         ids.reserve(keys.size());
         for (const std::string& key : keys) {
             uint32_t id = AddCachedModelByKey(key);
-            if (id != 0) { ids.push_back(id); }
+            if (id != 0) {
+                ids.push_back(id);
+            }
         }
         return ids;
     }
@@ -139,11 +147,17 @@ public:
     // objが部品に分かれている場合は、最初の部品の形になる。差し替えられなければfalse
     bool SetModel(uint32_t id, const std::string& directoryPath, const std::string& filename) {
         Object3D* obj = FindObjectById(id);
-        if (!obj) { return false; }
+        if (!obj) {
+            return false;
+        }
         std::vector<std::string> keys = GetOrLoadCachedModelKeys(directoryPath, filename);
-        if (keys.empty()) { return false; }
+        if (keys.empty()) {
+            return false;
+        }
         auto it = modelCache_.find(keys.front());
-        if (it == modelCache_.end()) { return false; }
+        if (it == modelCache_.end()) {
+            return false;
+        }
 
         const CachedModelData& model = it->second;
         AssignMesh(*obj, model.mesh);
@@ -220,7 +234,9 @@ public:
     // 窓へ戻すときは、全画面にする前の位置と大きさへ戻る
     bool IsFullscreen() const { return fullscreen_; }
     void SetFullscreen(bool fullscreen) {
-        if (fullscreen == fullscreen_) { return; }
+        if (fullscreen == fullscreen_) {
+            return;
+        }
 
         HMONITOR monitor = MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST);
         MONITORINFO info{ sizeof(MONITORINFO) };
@@ -373,23 +389,39 @@ public:
 
     // 名前・タグで最初の1体を探す（見つからなければnullptr）
     Object3D* FindByName(const std::string& name) {
-        for (Object3D& obj : objects_) { if (obj.name == name) { return &obj; } }
+        for (Object3D& obj : objects_) {
+            if (obj.name == name) {
+                return &obj;
+            }
+        }
         return nullptr;
     }
     Object3D* FindByTag(const std::string& tag) override {
-        for (Object3D& obj : objects_) { if (obj.tag == tag) { return &obj; } }
+        for (Object3D& obj : objects_) {
+            if (obj.tag == tag) {
+                return &obj;
+            }
+        }
         return nullptr;
     }
     // タグが一致するものを全部（idの一覧で返す）
     std::vector<uint32_t> FindAllByTag(const std::string& tag) const {
         std::vector<uint32_t> ids;
-        for (const Object3D& obj : objects_) { if (obj.tag == tag) { ids.push_back(obj.id); } }
+        for (const Object3D& obj : objects_) {
+            if (obj.tag == tag) {
+                ids.push_back(obj.id);
+            }
+        }
         return ids;
     }
 
     // 消す。その場では消さず、このフレームの終わり（描画の前）にまとめて消す。
     // 衝突の通知や部品の更新の最中に呼んでも安全
-    void Destroy(uint32_t id) { if (id != 0) { pendingDestroy_.push_back(id); } }
+    void Destroy(uint32_t id) {
+        if (id != 0) {
+            pendingDestroy_.push_back(id);
+        }
+    }
     void DestroyAll() { destroyAllRequested_ = true; }
 
     // ===== 場面（シーン）の切り替え =====
@@ -415,7 +447,9 @@ public:
         const std::vector<std::string> keys = MakeObjectEditKeys(objects_);
         for (size_t i = 0; i < objects_.size(); ++i) {
             auto it = savedEdits_.find(keys[i]);
-            if (it != savedEdits_.end()) { it->second.ApplyTo(objects_[i]); }
+            if (it != savedEdits_.end()) {
+                it->second.ApplyTo(objects_[i]);
+            }
         }
     }
 
@@ -481,8 +515,12 @@ public:
         RaycastHit result;
         float best = maxDistance;
         for (Object3D& obj : objects_) {
-            if (!obj.visible || obj.isSprite) { continue; }
-            if (!tag.empty() && obj.tag != tag) { continue; }
+            if (!obj.visible || obj.isSprite) {
+                continue;
+            }
+            if (!tag.empty() && obj.tag != tag) {
+                continue;
+            }
             float distance = 0.0f;
             if (RayIntersectOBB(origin, direction, obj.GetWorldOBB(), distance) && distance < best) {
                 best = distance;
@@ -515,7 +553,9 @@ public:
     // 既定では Debug ビルドでだけ使える（Release では F2 を押しても出ない）
     void SetDebugViewEnabled(bool enabled) {
         debugViewEnabled_ = enabled;
-        if (!enabled && debugViewActive_) { SetDebugViewActive(false); }
+        if (!enabled && debugViewActive_) {
+            SetDebugViewActive(false);
+        }
     }
     bool IsDebugViewActive() const { return debugViewActive_; }
     // デバッグビューで選んでいる物のid（選んでいなければ0）
@@ -613,7 +653,9 @@ public:
                   float rotation = 0.0f, const Vector4& color = Vector4{ 1.0f, 1.0f, 1.0f, 1.0f },
                   float scale = 1.0f) {
         const Loaded2DTexture* texture = GetOr2DLoadTexture(texturePath);
-        if (!texture) { return; }
+        if (!texture) {
+            return;
+        }
         PushSprite2D(texture, { centerX, centerY },
                      texture->width * scale, texture->height * scale, rotation, color, true);
     }
@@ -623,7 +665,9 @@ public:
                        float width, float height, float rotation = 0.0f,
                        const Vector4& color = Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }) {
         const Loaded2DTexture* texture = GetOr2DLoadTexture(texturePath);
-        if (!texture) { return; }
+        if (!texture) {
+            return;
+        }
         PushSprite2D(texture, { centerX, centerY }, width, height, rotation, color, true);
     }
 
@@ -632,7 +676,9 @@ public:
                      float rotation = 0.0f, const Vector4& color = Vector4{ 1.0f, 1.0f, 1.0f, 1.0f },
                      float scale = 1.0f) {
         const Loaded2DTexture* texture = GetOr2DLoadTexture(texturePath);
-        if (!texture) { return; }
+        if (!texture) {
+            return;
+        }
         PushSprite2D(texture, { centerX, centerY },
                      texture->width * scale, texture->height * scale, rotation, color, false);
     }
@@ -706,7 +752,9 @@ public:
             // 全画面の出し入れ（F11 / Alt+Enter）
             if (input_->IsWindowActive()) {
                 bool altEnter = input_->IsKeyTriggered(DIK_RETURN) && (input_->IsKeyDown(DIK_LMENU) || input_->IsKeyDown(DIK_RMENU));
-                if (input_->IsKeyTriggered(DIK_F11) || altEnter) { ToggleFullscreen(); }
+                if (input_->IsKeyTriggered(DIK_F11) || altEnter) {
+                    ToggleFullscreen();
+                }
             }
             camera2D_.Update(frameTime); // 2Dカメラの揺れを減らす
 
@@ -737,7 +785,9 @@ public:
                 particles_.Update(scaledTime);
 
                 // --- ゲームの処理（SetUpdateCallbackしたもの）---
-                if (updateCallback_) { updateCallback_(frameTime); }
+                if (updateCallback_) {
+                    updateCallback_(frameTime);
+                }
             }
 
             // --- 消す予約をまとめて実行 ---
@@ -748,7 +798,9 @@ public:
             camera_.Update(frameTime);
 
             // デバッグビューの目印（選択枠・ギズモ・案内）は、カメラが確定してから積む
-            if (debugViewActive_) { DrawDebugView(); }
+            if (debugViewActive_) {
+                DrawDebugView();
+            }
 
 #ifdef USE_IMGUI
             ImGui_ImplDX12_NewFrame();
@@ -761,10 +813,14 @@ public:
                 DrawParticlePanel(particles_);
                 // パネルの数値やギズモを触り終えた瞬間に保存する（終了し忘れ・異常終了でも消えないように）
                 bool editing = ImGui::IsAnyItemActive() || gizmoDragAxis_ >= 0;
-                if (debugWasEditing_ && !editing) { SaveDebugEdits(); }
+                if (debugWasEditing_ && !editing) {
+                    SaveDebugEdits();
+                }
                 debugWasEditing_ = editing;
             }
-            if (imguiCallback_) { imguiCallback_(frameTime); }
+            if (imguiCallback_) {
+                imguiCallback_(frameTime);
+            }
 #endif
 
             RenderFrame();
@@ -773,11 +829,20 @@ public:
 
     // 後始末。ComPtrで持つDirectXリソース自体はデストラクタで自動解放される
     void Shutdown() {
-        if (!initialized_) { return; }
-        if (debugViewActive_) { SaveDebugEdits(); } // デバッグビューのまま閉じられても保存する
+        if (!initialized_) {
+            return;
+        }
+        // デバッグビューのまま閉じられても保存する
+        if (debugViewActive_) {
+            SaveDebugEdits();
+        }
         // GPUが使い終わってから片付ける（描画中のフォント等を消さないため）
 #ifdef USE_IMGUI
-        if (imguiInitialized_) { gfx_.WaitForGPU(); ShutdownImGui(); imguiInitialized_ = false; }
+        if (imguiInitialized_) {
+            gfx_.WaitForGPU();
+            ShutdownImGui();
+            imguiInitialized_ = false;
+        }
 #endif
         // 鳴っている音を全部止めてから、音のデータを解放する。
         // 逆にすると、鳴っている途中の効果音が解放済みのデータを読みに行く
@@ -921,11 +986,15 @@ private:
     const Camera& ViewCamera() const { return debugViewActive_ ? debugCamera_ : camera_; }
 
     void SetDebugViewActive(bool active) {
-        if (active == debugViewActive_) { return; }
+        if (active == debugViewActive_) {
+            return;
+        }
         if (active) {
             // 入った時点の値を控えておく。出るとき・操作を終えたときに、ここから変わった物だけを保存する
             debugSnapshot_.clear();
-            for (const Object3D& obj : objects_) { debugSnapshot_[obj.id] = ObjectEdit::From(obj); }
+            for (const Object3D& obj : objects_) {
+                debugSnapshot_[obj.id] = ObjectEdit::From(obj);
+            }
             particles_.BeginEditSession();
             debugWasEditing_ = false;
         } else {
@@ -956,12 +1025,16 @@ private:
         for (size_t i = 0; i < objects_.size(); ++i) {
             const ObjectEdit now = ObjectEdit::From(objects_[i]);
             auto snap = debugSnapshot_.find(objects_[i].id);
-            if (snap != debugSnapshot_.end() && snap->second == now) { continue; }
+            if (snap != debugSnapshot_.end() && snap->second == now) {
+                continue;
+            }
             savedEdits_[keys[i]] = now;
             debugSnapshot_[objects_[i].id] = now;
             changed = true;
         }
-        if (changed) { SaveObjectEdits(savedEdits_); }
+        if (changed) {
+            SaveObjectEdits(savedEdits_);
+        }
         particles_.SaveEdits(); // パーティクルの設定も同じタイミングで保存する
     }
 
@@ -969,7 +1042,9 @@ private:
         debugCamera_.Update(deltaTime);
 
         Object3D* selected = FindObjectById(debugSelectedId_);
-        if (!selected) { debugSelectedId_ = 0; }
+        if (!selected) {
+            debugSelectedId_ = 0;
+        }
 
         bool windowActive = input_->IsWindowActive();
         bool flying = input_->IsMouseDown(MouseButton::Right); // 右ボタン中のキーは視点の移動に使う
@@ -984,10 +1059,18 @@ private:
 
         // ツールの切り替え（UnityのW/E/R）と、選んだ物へ寄る（F）
         if (windowActive && !flying && gizmoDragAxis_ < 0 && !uiKeyboard) {
-            if (input_->IsKeyTriggered(DIK_W)) { gizmoTool_ = GizmoTool::Move; }
-            if (input_->IsKeyTriggered(DIK_E)) { gizmoTool_ = GizmoTool::Rotate; }
-            if (input_->IsKeyTriggered(DIK_R)) { gizmoTool_ = GizmoTool::Scale; }
-            if (input_->IsKeyTriggered(DIK_F) && selected) { FocusDebugCamera(*selected); }
+            if (input_->IsKeyTriggered(DIK_W)) {
+                gizmoTool_ = GizmoTool::Move;
+            }
+            if (input_->IsKeyTriggered(DIK_E)) {
+                gizmoTool_ = GizmoTool::Rotate;
+            }
+            if (input_->IsKeyTriggered(DIK_R)) {
+                gizmoTool_ = GizmoTool::Scale;
+            }
+            if (input_->IsKeyTriggered(DIK_F) && selected) {
+                FocusDebugCamera(*selected);
+            }
         }
 
         Vector3 rayOrigin{}, rayDir{};
@@ -995,8 +1078,13 @@ private:
 
         // 掴んでいる最中
         if (gizmoDragAxis_ >= 0) {
-            if (!selected || !input_->IsMouseDown(MouseButton::Left)) { gizmoDragAxis_ = -1; return; }
-            if (hasRay) { ApplyGizmoDrag(*selected, rayOrigin, rayDir); }
+            if (!selected || !input_->IsMouseDown(MouseButton::Left)) {
+                gizmoDragAxis_ = -1;
+                return;
+            }
+            if (hasRay) {
+                ApplyGizmoDrag(*selected, rayOrigin, rayDir);
+            }
             return;
         }
 
@@ -1052,7 +1140,10 @@ private:
                     bool valid = WorldToScreen(Gizmo::PointOnRing(center, a, length, angle), vp, width, height, screen);
                     if (valid && prevValid) {
                         float d = Gizmo::DistancePointToSegment(mouse, prev, screen);
-                        if (d < bestDistance) { bestDistance = d; bestAxis = a; }
+                        if (d < bestDistance) {
+                            bestDistance = d;
+                            bestAxis = a;
+                        }
                     }
                     prev = screen;
                     prevValid = valid;
@@ -1062,12 +1153,19 @@ private:
         }
 
         Vector2 origin{};
-        if (!WorldToScreen(center, vp, width, height, origin)) { return -1; }
+        if (!WorldToScreen(center, vp, width, height, origin)) {
+            return -1;
+        }
         for (int a = 0; a < 3; ++a) {
             Vector2 tip{};
-            if (!WorldToScreen(AddScaled(center, Gizmo::kAxis[a], length), vp, width, height, tip)) { continue; }
+            if (!WorldToScreen(AddScaled(center, Gizmo::kAxis[a], length), vp, width, height, tip)) {
+                continue;
+            }
             float d = Gizmo::DistancePointToSegment(mouse, origin, tip);
-            if (d < bestDistance) { bestDistance = d; bestAxis = a; }
+            if (d < bestDistance) {
+                bestDistance = d;
+                bestAxis = a;
+            }
         }
         return bestAxis;
     }
@@ -1082,7 +1180,9 @@ private:
         if (gizmoTool_ == GizmoTool::Rotate) {
             Vector3 hit{};
             // 輪を真横から見ていると交点が求まらない。そのときは掴めなかったことにする
-            if (!Gizmo::RayPlaneIntersect(rayOrigin, rayDir, center, Gizmo::kAxis[axis], hit)) { return; }
+            if (!Gizmo::RayPlaneIntersect(rayOrigin, rayDir, center, Gizmo::kAxis[axis], hit)) {
+                return;
+            }
             dragPrevAngle_ = Gizmo::AngleOnRing(center, axis, hit);
             dragAccumAngle_ = 0.0f;
         } else {
@@ -1103,13 +1203,17 @@ private:
         case GizmoTool::Move: {
             float delta = Gizmo::ClosestTOnAxis(dragStartTranslate_, dir, rayOrigin, rayDir) - dragStartT_;
             Vector3 moved = AddScaled(dragStartTranslate_, dir, delta);
-            if (snap) { AxisComponent(moved, axis) = Gizmo::SnapTo(AxisComponent(moved, axis), kSnapMove); }
+            if (snap) {
+                AxisComponent(moved, axis) = Gizmo::SnapTo(AxisComponent(moved, axis), kSnapMove);
+            }
             obj.transform.translate = moved;
             break;
         }
         case GizmoTool::Rotate: {
             Vector3 hit{};
-            if (!Gizmo::RayPlaneIntersect(rayOrigin, rayDir, dragStartTranslate_, dir, hit)) { break; }
+            if (!Gizmo::RayPlaneIntersect(rayOrigin, rayDir, dragStartTranslate_, dir, hit)) {
+                break;
+            }
             // 1フレームぶんの差を積む。角度そのものの差だと、±180度をまたいだ瞬間に1回転ぶん飛ぶ
             float angle = Gizmo::AngleOnRing(dragStartTranslate_, axis, hit);
             dragAccumAngle_ += Gizmo::WrapAngle(angle - dragPrevAngle_);
@@ -1170,7 +1274,9 @@ private:
         const float height = (float)gfx_.clientHeight;
         auto Project = [&](const Vector3& world, Vector2& outCanvas) {
             Vector2 pixel{};
-            if (!WorldToScreen(world, vp, width, height, pixel)) { return false; }
+            if (!WorldToScreen(world, vp, width, height, pixel)) {
+                return false;
+            }
             outCanvas = { ScreenToUiX(pixel.x), ScreenToUiY(pixel.y) };
             return true;
         };
@@ -1201,7 +1307,9 @@ private:
             const Vector4 kOutline{ 1.0f, 0.6f, 0.1f, 1.0f };
             for (const auto& edge : kEdges) {
                 Vector2 a{}, b{};
-                if (Project(corners[edge[0]], a) && Project(corners[edge[1]], b)) { HudLine(a, b, 1.5f, kOutline); }
+                if (Project(corners[edge[0]], a) && Project(corners[edge[1]], b)) {
+                    HudLine(a, b, 1.5f, kOutline);
+                }
             }
 
             // --- ギズモ ---
@@ -1225,24 +1333,33 @@ private:
                         float angle = kTwoPi * (float)i / (float)kSegments;
                         Vector2 p{};
                         bool valid = Project(Gizmo::PointOnRing(center, a, length, angle), p);
-                        if (valid && prevValid) { HudLine(prev, p, 2.5f, color); }
+                        if (valid && prevValid) {
+                            HudLine(prev, p, 2.5f, color);
+                        }
                         prev = p;
                         prevValid = valid;
                     }
                     continue;
                 }
-                if (!originVisible) { continue; }
+                if (!originVisible) {
+                    continue;
+                }
                 // 拡縮中は、その軸だけ伸び縮みして見せる
                 float armLength = length;
                 if (gizmoTool_ == GizmoTool::Scale && a == gizmoDragAxis_ && AxisComponent(dragStartScale_, a) > 0.0f) {
                     armLength *= AxisComponent(selected->transform.scale, a) / AxisComponent(dragStartScale_, a);
                 }
                 Vector2 tip{};
-                if (!Project(AddScaled(center, Gizmo::kAxis[a], armLength), tip)) { continue; }
+                if (!Project(AddScaled(center, Gizmo::kAxis[a], armLength), tip)) {
+                    continue;
+                }
                 float dx = tip.x - origin.x, dy = tip.y - origin.y;
                 float screenLength = sqrtf(dx * dx + dy * dy);
                 HudLine(origin, tip, 3.0f, color);
-                if (screenLength < 4.0f) { continue; } // 軸を真正面から見ている：向きが決まらない
+                // 軸を真正面から見ている：向きが決まらない
+                if (screenLength < 4.0f) {
+                    continue;
+                }
                 float rotation = atan2f(dy, dx);
                 if (gizmoTool_ == GizmoTool::Move) {
                     // 矢じり（先端から少し先まで被せる）
@@ -1289,7 +1406,9 @@ private:
         componentClock_ += deltaTime;
         for (size_t i = 0; i < objects_.size(); ++i) {
             Object3D& obj = objects_[i];
-            if (obj.components.Empty()) { continue; }
+            if (obj.components.Empty()) {
+                continue;
+            }
             ComponentContext ctx{ obj, deltaTime, componentClock_, this };
             obj.components.Update(ctx);
         }
@@ -1306,7 +1425,9 @@ private:
             pendingDestroy_.clear();
             return;
         }
-        if (pendingDestroy_.empty()) { return; }
+        if (pendingDestroy_.empty()) {
+            return;
+        }
         objects_.erase(std::remove_if(objects_.begin(), objects_.end(), [&](const Object3D& obj) {
             return std::find(pendingDestroy_.begin(), pendingDestroy_.end(), obj.id) != pendingDestroy_.end();
         }), objects_.end());
@@ -1320,14 +1441,18 @@ private:
     // 物理が作った当たりを、ゲームと、挿してある部品の両方へ配る
     void DispatchCollisionEvents() {
         for (const CollisionEvent& e : physics_.Events()) {
-            if (collisionCallback_) { collisionCallback_(e); }
+            if (collisionCallback_) {
+                collisionCallback_(e);
+            }
             DispatchToOne(e, e.a, e.b, false);
             DispatchToOne(e, e.b, e.a, true);  // b側は法線を反転して渡す（部品は常に「自分」基準で受け取る）
         }
     }
 
     void DispatchToOne(const CollisionEvent& e, Object3D* self, Object3D* other, bool flipNormal) {
-        if (!self || self->components.Empty()) { return; }
+        if (!self || self->components.Empty()) {
+            return;
+        }
         ComponentCollision hit;
         hit.other = other;
         hit.phase = e.phase;
@@ -1345,7 +1470,9 @@ private:
 
     // 画面のピクセル位置を通る、カメラからのレイ（ワールド空間）
     bool ComputeMouseRay(POINT pt, Vector3& outOrigin, Vector3& outDir) {
-        if (pt.x < 0 || pt.y < 0 || pt.x >= gfx_.clientWidth || pt.y >= gfx_.clientHeight) { return false; }
+        if (pt.x < 0 || pt.y < 0 || pt.x >= gfx_.clientWidth || pt.y >= gfx_.clientHeight) {
+            return false;
+        }
 
         float ndcX = (2.0f * (float)pt.x) / (float)gfx_.clientWidth - 1.0f;
         float ndcY = 1.0f - (2.0f * (float)pt.y) / (float)gfx_.clientHeight; // スクリーンはY下向き、NDCはY上向き
@@ -1358,7 +1485,9 @@ private:
         outOrigin = nearPoint;
         Vector3 dirRaw = { farPoint.x - nearPoint.x, farPoint.y - nearPoint.y, farPoint.z - nearPoint.z };
         float len = sqrtf(dirRaw.x * dirRaw.x + dirRaw.y * dirRaw.y + dirRaw.z * dirRaw.z);
-        if (len < 1e-6f) { return false; }
+        if (len < 1e-6f) {
+            return false;
+        }
         outDir = { dirRaw.x / len, dirRaw.y / len, dirRaw.z / len };
         return true;
     }
@@ -1369,7 +1498,9 @@ private:
     std::vector<std::string> GetOrLoadCachedModelKeys(const std::string& directoryPath, const std::string& filename) {
         std::string fileKey = directoryPath + "/" + filename;
         auto cachedKeys = modelPartKeys_.find(fileKey);
-        if (cachedKeys != modelPartKeys_.end()) { return cachedKeys->second; }
+        if (cachedKeys != modelPartKeys_.end()) {
+            return cachedKeys->second;
+        }
 
         // テクスチャの置き場所（SRVヒープ）が満杯なら、専用テクスチャの読み込みだけ諦める。
         // 形は既定のテクスチャで出るので作業は続けられる。
@@ -1383,7 +1514,9 @@ private:
             gfx_.device.Get(), gfx_.commandList.Get(), gfx_.srvDescriptorHeap.Get(), gfx_.descriptorSizeSRV, gfx_.nextSrvIndex,
             gfx_.pendingIntermediateResources, directoryPath, filename, srvSlotAvailable);
         // テクスチャはファイルにつき1枚を全部品で共有しているので、進めるスロットも1つだけ
-        if (!parts.empty() && parts.front().data.hasOwnTexture) { gfx_.nextSrvIndex++; }
+        if (!parts.empty() && parts.front().data.hasOwnTexture) {
+            gfx_.nextSrvIndex++;
+        }
 
         std::vector<std::string> keys;
         keys.reserve(parts.size());
@@ -1399,7 +1532,9 @@ private:
     // キャッシュ済みの見出しからオブジェクトを1つ置き、そのIDを返す（見つからなければ0）
     uint32_t AddCachedModelByKey(const std::string& key) {
         auto it = modelCache_.find(key);
-        if (it == modelCache_.end()) { return 0; }
+        if (it == modelCache_.end()) {
+            return 0;
+        }
         // 名前からはフォルダを落とす
         size_t slash = key.find_last_of('/');
         std::string displayName = (slash == std::string::npos) ? key : key.substr(slash + 1);
@@ -1411,7 +1546,9 @@ private:
     bool ProcessWindowMessages() {
         MSG msg{};
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-            if (msg.message == WM_QUIT) { return false; }
+            if (msg.message == WM_QUIT) {
+                return false;
+            }
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
@@ -1442,9 +1579,14 @@ private:
         // 不透明な物を先に描き、半透明な物は遠い順に重ねる（近い物から描くと、後ろの物が透けて見えない）
         std::vector<Object3D*> blended;
         for (auto& obj : objects_) {
-            if (!obj.visible) { continue; }
+            if (!obj.visible) {
+                continue;
+            }
             UpdateObjectMatrices(obj, cameraVP, spriteVP);
-            if (obj.blendMode != BlendMode::kNone) { blended.push_back(&obj); continue; }
+            if (obj.blendMode != BlendMode::kNone) {
+                blended.push_back(&obj);
+                continue;
+            }
             DrawObject(gfx_.commandList.Get(), obj, textures_);
         }
         if (!blended.empty()) {
@@ -1498,7 +1640,10 @@ private:
 #endif
 
         // 撮るのはここ。実際に出ている絵をそのまま読み戻す
-        if (screenshotRequested_) { screenshotRequested_ = false; CopyBackBufferForScreenshot(gfx_.CurrentBackBufferIndex()); }
+        if (screenshotRequested_) {
+            screenshotRequested_ = false;
+            CopyBackBufferForScreenshot(gfx_.CurrentBackBufferIndex());
+        }
 
         gfx_.PostDraw();
         // GPUが写し終えた後でないと読めない
@@ -1570,7 +1715,9 @@ private:
 
     // GPUを待った後に呼ぶ。読み戻した中身をpngにして書き出す
     void SaveScreenshotFile() {
-        if (!screenshotReadback_) { return; }
+        if (!screenshotReadback_) {
+            return;
+        }
 
         uint8_t* mapped = nullptr;
         HRESULT hr = screenshotReadback_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
@@ -1591,7 +1738,9 @@ private:
             const uint8_t* sourceRow = mapped + (size_t)y * rowPitch;
             uint8_t* destinationRow = pixels.data() + (size_t)y * width * 4;
             memcpy(destinationRow, sourceRow, (size_t)width * 4);
-            for (UINT x = 0; x < width; ++x) { destinationRow[x * 4 + 3] = 255; }
+            for (UINT x = 0; x < width; ++x) {
+                destinationRow[x * 4 + 3] = 255;
+            }
         }
         screenshotReadback_->Unmap(0, nullptr);
         screenshotReadback_.Reset();
@@ -1633,17 +1782,23 @@ private:
     // 物の陰影（明るい面/暗い面）と影の位置が食い違い、どちらが正しいのか分からない絵になる。
     // 斜めから照らせば影は反対側へ伸び、その伸び具合まで含めて光源の向きと一致する
     void DrawShadows(const Matrix4x4& cameraVP) {
-        if (!features_.shadows) { return; }
+        if (!features_.shadows) {
+            return;
+        }
 
         // 光の進む向き（正規化）。全成分0にもできるので、長さが無い場合は諦める
         Vector3 lightDir = light_.data->direction;
         float lightLength = sqrtf(lightDir.x * lightDir.x + lightDir.y * lightDir.y + lightDir.z * lightDir.z);
-        if (lightLength < 1e-4f) { return; }
+        if (lightLength < 1e-4f) {
+            return;
+        }
         lightDir = { lightDir.x / lightLength, lightDir.y / lightLength, lightDir.z / lightLength };
 
         // 光がほぼ水平（または下から）だと、地面に落ちる影が無限に伸びて絵として破綻する。
         // 真上寄りから照らしているときだけ影を出す
-        if (lightDir.y > -0.15f) { return; }
+        if (lightDir.y > -0.15f) {
+            return;
+        }
 
         gfx_.commandList->SetGraphicsRootSignature(shadowPipeline_.rootSignature.Get());
         gfx_.commandList->SetPipelineState(shadowPipeline_.pso.Get());
@@ -1653,10 +1808,17 @@ private:
 
         int slot = 0;
         for (const Object3D& caster : objects_) {
-            if (slot >= kMaxShadows) { break; }
+            if (slot >= kMaxShadows) {
+                break;
+            }
             // 動かない物・2Dのスプライト・当たり判定を持たない物は影を落とさない
-            if (caster.isSprite || caster.isStatic || !caster.usePhysics || !caster.useBoxCollider || caster.isTrigger) { continue; }
-            if (!caster.visible) { continue; } // 割れて消えた本体の影が残らないように
+            if (caster.isSprite || caster.isStatic || !caster.usePhysics || !caster.useBoxCollider || caster.isTrigger) {
+                continue;
+            }
+            // 割れて消えた本体の影が残らないように
+            if (!caster.visible) {
+                continue;
+            }
 
             OBB casterOBB = caster.GetWorldOBB();
 
@@ -1668,14 +1830,21 @@ private:
 
             float distance = 0.0f;
             Vector3 groundPoint{};
-            if (!RaycastFrom(caster, origin, lightDir, distance, groundPoint)) { continue; } // 光の先に何も無ければ影も無い
-            if (distance > shadowMaxHeight_) { continue; }
+            // 光の先に何も無ければ影も無い
+            if (!RaycastFrom(caster, origin, lightDir, distance, groundPoint)) {
+                continue;
+            }
+            if (distance > shadowMaxHeight_) {
+                continue;
+            }
 
             // 高いほど薄く、そして少しだけ大きく。実際の影と同じ振る舞いで、
             // 「今どのくらい浮いているか」が影の濃さと大きさから読み取れるようになる
             float heightRatio = distance / shadowMaxHeight_;
             float alpha = shadowOpacity_ * (1.0f - heightRatio) * (1.0f - heightRatio);
-            if (alpha < 0.01f) { continue; }
+            if (alpha < 0.01f) {
+                continue;
+            }
 
             // 板は1辺1なので、スケールにはそのまま「影の直径」を渡す（半径ではないことに注意）。
             // 物の幅の1.8倍を基準にしてある。ふちがぼけて薄くなるぶん、
@@ -1714,8 +1883,13 @@ private:
         bool hit = false;
 
         auto TestOne = [&](const Object3D& target) {
-            if (&target == &caster) { return; }               // 自分自身には落とさない
-            if (!target.useBoxCollider || target.isSprite || target.isTrigger) { return; }
+            // 自分自身には落とさない
+            if (&target == &caster) {
+                return;
+            }
+            if (!target.useBoxCollider || target.isSprite || target.isTrigger) {
+                return;
+            }
             float distance = 0.0f;
             if (RayIntersectOBB(origin, direction, target.GetWorldOBB(), distance) && distance < best) {
                 best = distance;
@@ -1723,9 +1897,13 @@ private:
             }
         };
 
-        for (const Object3D& obj : objects_) { TestOne(obj); }
+        for (const Object3D& obj : objects_) {
+            TestOne(obj);
+        }
 
-        if (!hit) { return false; }
+        if (!hit) {
+            return false;
+        }
         outDistance = best;
         outPoint = { origin.x + direction.x * best, origin.y + direction.y * best, origin.z + direction.z * best };
         return true;
@@ -1804,10 +1982,14 @@ private:
 
     void Push2D(Draw2DCommand::Kind kind, const Vector2& position, float width, float height,
                 float rotation, const Vector4& color, bool throughCamera) {
-        if (color.w <= 0.001f) { return; }
+        if (color.w <= 0.001f) {
+            return;
+        }
         // 積みすぎを止める。上限を超えたぶんを捨てるのは、
         // 何も描かなくなるより「一部が出ない」方が原因を追いやすいため
-        if (draw2DCommands_.size() >= (size_t)kMaxDraw2D) { return; }
+        if (draw2DCommands_.size() >= (size_t)kMaxDraw2D) {
+            return;
+        }
         Draw2DCommand command{ kind, position, width, height, rotation, color, throughCamera };
         draw2DCommands_.push_back(command);
     }
@@ -1816,7 +1998,9 @@ private:
     void PushLine2D(const Vector2& a, const Vector2& b, float thickness, const Vector4& color, bool throughCamera) {
         float dx = b.x - a.x, dy = b.y - a.y;
         float length = sqrtf(dx * dx + dy * dy);
-        if (length < 0.0001f) { return; }
+        if (length < 0.0001f) {
+            return;
+        }
         Push2D(Draw2DCommand::Kind::Quad, { (a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f }, length, thickness,
                atan2f(dy, dx), color, throughCamera);
     }
@@ -1824,8 +2008,12 @@ private:
     void PushSprite2D(const Loaded2DTexture* texture, const Vector2& position,
                       float width, float height, float rotation, const Vector4& color,
                       bool throughCamera, const Vector4& uvRect = { 0.0f, 0.0f, 1.0f, 1.0f }) {
-        if (color.w <= 0.001f || !texture) { return; }
-        if (draw2DCommands_.size() >= (size_t)kMaxDraw2D) { return; }
+        if (color.w <= 0.001f || !texture) {
+            return;
+        }
+        if (draw2DCommands_.size() >= (size_t)kMaxDraw2D) {
+            return;
+        }
         Draw2DCommand command{ Draw2DCommand::Kind::Quad, position, width, height,
                                rotation, color, throughCamera };
         command.texture = texture->srv;
@@ -1838,7 +2026,9 @@ private:
                             float srcX, float srcY, float srcWidth, float srcHeight,
                             float rotation, const Vector4& color, float scale, bool throughCamera) {
         const Loaded2DTexture* texture = GetOr2DLoadTexture(texturePath);
-        if (!texture || texture->width <= 0.0f || texture->height <= 0.0f) { return; }
+        if (!texture || texture->width <= 0.0f || texture->height <= 0.0f) {
+            return;
+        }
         const Vector4 uvRect{ srcX / texture->width, srcY / texture->height,
                               srcWidth / texture->width, srcHeight / texture->height };
         PushSprite2D(texture, position, srcWidth * scale, srcHeight * scale, rotation, color, throughCamera, uvRect);
@@ -1846,7 +2036,9 @@ private:
 
     // 積んだ2Dの命令を、2D用のパイプラインへ流す
     void FlushDraw2D() {
-        if (draw2DCommands_.empty()) { return; }
+        if (draw2DCommands_.empty()) {
+            return;
+        }
 
         gfx_.commandList->SetGraphicsRootSignature(draw2DPipeline_.rootSignature.Get());
         gfx_.commandList->SetPipelineState(draw2DPipeline_.pso.Get());
@@ -1857,7 +2049,9 @@ private:
             ? ((float)gfx_.clientWidth / (float)gfx_.clientHeight) : 1.0f;
 
         for (const Draw2DCommand& command : draw2DCommands_) {
-            if (draw2DDrawCount_ >= (int)draw2DTransformBuffers_.size()) { break; }
+            if (draw2DDrawCount_ >= (int)draw2DTransformBuffers_.size()) {
+                break;
+            }
 
             Vector2 canvasPoint = command.throughCamera
                 ? WorldToCanvas(camera2D_, canvas2D_, command.position)
@@ -1927,13 +2121,19 @@ private:
         // （useBoxColliderがOFFのオブジェクトは、押す/押される判定と同じく表示上の衝突判定からも除外する）
         std::vector<OBB> worldOBBs;
         worldOBBs.reserve(objects_.size());
-        for (auto& obj : objects_) { worldOBBs.push_back(obj.GetWorldOBB()); }
+        for (auto& obj : objects_) {
+            worldOBBs.push_back(obj.GetWorldOBB());
+        }
 
         std::vector<bool> isColliding(objects_.size(), false);
         for (size_t i = 0; i < worldOBBs.size(); ++i) {
-            if (!objects_[i].useBoxCollider || objects_[i].isSprite) { continue; }
+            if (!objects_[i].useBoxCollider || objects_[i].isSprite) {
+                continue;
+            }
             for (size_t j = i + 1; j < worldOBBs.size(); ++j) {
-                if (!objects_[j].useBoxCollider || objects_[j].isSprite) { continue; }
+                if (!objects_[j].useBoxCollider || objects_[j].isSprite) {
+                    continue;
+                }
                 if (Intersect(worldOBBs[i], worldOBBs[j])) {
                     isColliding[i] = true;
                     isColliding[j] = true;
@@ -1947,9 +2147,15 @@ private:
         gfx_.commandList->IASetVertexBuffers(0, 1, &lineBoxMesh_.vbv);
         gfx_.commandList->IASetIndexBuffer(&lineBoxMesh_.ibv);
         for (size_t i = 0; i < objects_.size(); ++i) {
-            if (slot >= kMaxColliderBoxes) { break; } // 確保しておいたCBVプールを使い切ったら以降は諦める
+            // 確保しておいたCBVプールを使い切ったら以降は諦める
+            if (slot >= kMaxColliderBoxes) {
+                break;
+            }
             Object3D& obj = objects_[i];
-            if (!obj.useBoxCollider) { continue; } // OFFのオブジェクトはボックスを表示しない
+            // OFFのオブジェクトはボックスを表示しない
+            if (!obj.useBoxCollider) {
+                continue;
+            }
 
             const OBB& worldOBB = worldOBBs[i];
             // ユニットボックス（0〜1）をOBBの向き・大きさに変形し、最小コーナーへ平行移動するだけでOBBそのものになる
@@ -1967,14 +2173,21 @@ private:
 
         // ----- メッシュコライダーの描画（useMeshCollider が true のオブジェクトのみ、実メッシュの辺に沿って表示） -----
         for (size_t i = 0; i < objects_.size(); ++i) {
-            if (slot >= kMaxColliderBoxes) { break; }
+            if (slot >= kMaxColliderBoxes) {
+                break;
+            }
             Object3D& obj = objects_[i];
-            if (!obj.useMeshCollider) { continue; }
+            if (!obj.useMeshCollider) {
+                continue;
+            }
 
             // ワイヤーフレーム用の頂点/インデックスバッファは初回描画時に1度だけ作り、以後は使い回す
             if (!obj.meshLineData.built) {
                 obj.meshLineData = CreateMeshWireframeLineData(gfx_.device.Get(), obj.localPositions, obj.triangleIndices);
-                if (!obj.meshLineData.built) { continue; } // メッシュ情報が無ければ描画しない
+                // メッシュ情報が無ければ描画しない
+                if (!obj.meshLineData.built) {
+                    continue;
+                }
             }
 
             gfx_.commandList->IASetVertexBuffers(0, 1, &obj.meshLineData.vbv);

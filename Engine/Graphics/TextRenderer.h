@@ -87,12 +87,18 @@ public:
 
     void Finalize() {
         if (hdc_) {
-            if (previousFont_) { SelectObject(hdc_, previousFont_); previousFont_ = nullptr; }
+            if (previousFont_) {
+                SelectObject(hdc_, previousFont_);
+                previousFont_ = nullptr;
+            }
             DeleteDC(hdc_);
             hdc_ = nullptr;
         }
         for (FontFace& face : faces_) {
-            if (face.font) { DeleteObject(face.font); face.font = nullptr; }
+            if (face.font) {
+                DeleteObject(face.font);
+                face.font = nullptr;
+            }
         }
     }
 
@@ -106,15 +112,23 @@ public:
     void DrawText(ID3D12GraphicsCommandList* commandList, float x, float y,
                   const std::string& utf8Text, float size, const Vector4& color,
                   TextFace face = TextFace::Body) {
-        if (utf8Text.empty()) { return; }
+        if (utf8Text.empty()) {
+            return;
+        }
         std::wstring text = ConvertString(utf8Text);
         float scale = size / (float)kGlyphPixelHeight;
         float penX = x;
         float penY = y;
 
         for (wchar_t ch : text) {
-            if (ch == L'\n') { penX = x; penY += size * kLineSpacing; continue; }
-            if (ch == L'\r') { continue; }
+            if (ch == L'\n') {
+                penX = x;
+                penY += size * kLineSpacing;
+                continue;
+            }
+            if (ch == L'\r') {
+                continue;
+            }
 
             const GlyphInfo& glyph = GetOrCreateGlyph(commandList, ch, face);
             if (glyph.valid && vertexCount_ + 6 <= kMaxGlyphsPerFrame * 6) {
@@ -135,7 +149,9 @@ public:
     void EnsureGlyphs(ID3D12GraphicsCommandList* commandList, const std::string& utf8Text,
                       TextFace face = TextFace::Body) {
         for (wchar_t ch : ConvertString(utf8Text)) {
-            if (ch == L'\n' || ch == L'\r') { continue; }
+            if (ch == L'\n' || ch == L'\r') {
+                continue;
+            }
             GetOrCreateGlyph(commandList, ch, face);
         }
     }
@@ -144,14 +160,22 @@ public:
     // まだアトラスに無い文字は「だいたい正方形」とみなすので、
     // 正確に測りたい場合は先にEnsureGlyphs()を呼ぶこと
     float MeasureWidth(const std::string& utf8Text, float size, TextFace face = TextFace::Body) const {
-        if (utf8Text.empty()) { return 0.0f; }
+        if (utf8Text.empty()) {
+            return 0.0f;
+        }
         std::wstring text = ConvertString(utf8Text);
         float scale = size / (float)kGlyphPixelHeight;
         float widest = 0.0f;
         float current = 0.0f;
         for (wchar_t ch : text) {
-            if (ch == L'\n') { widest = (std::max)(widest, current); current = 0.0f; continue; }
-            if (ch == L'\r') { continue; }
+            if (ch == L'\n') {
+                widest = (std::max)(widest, current);
+                current = 0.0f;
+                continue;
+            }
+            if (ch == L'\r') {
+                continue;
+            }
             current += AdvanceOf(ch, face, scale, size);
         }
         return (std::max)(widest, current);
@@ -166,11 +190,15 @@ public:
     float AdvanceOf(wchar_t ch, TextFace face, float scale, float size) const {
         const auto& glyphs = faces_[(int)face].glyphs;
         auto it = glyphs.find((uint32_t)ch);
-        if (it != glyphs.end()) { return it->second.advance * scale; }
+        if (it != glyphs.end()) {
+            return it->second.advance * scale;
+        }
         if (face != TextFace::Body) {
             const auto& body = faces_[(int)TextFace::Body].glyphs;
             auto bodyIt = body.find((uint32_t)ch);
-            if (bodyIt != body.end()) { return bodyIt->second.advance * scale; }
+            if (bodyIt != body.end()) {
+                return bodyIt->second.advance * scale;
+            }
         }
         return size; // まだ切り出していない字。だいたい正方形とみなす
     }
@@ -178,7 +206,9 @@ public:
     // 溜めた文字をまとめて1回で描く。呼んだあとは空になるので、毎フレーム最後に1回呼べばよい。
     // 描画対象・ビューポートはすでに設定済みである前提（RenderFrameの中から呼ぶ）
     void Flush(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, int screenWidth, int screenHeight) {
-        if (vertexCount_ == 0) { return; }
+        if (vertexCount_ == 0) {
+            return;
+        }
 
         // アトラスへの貼り付けはDrawText時に済んでいるので、ここで読み取り可能な状態へ切り替える
         TransitionAtlas(commandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -275,16 +305,25 @@ private:
         for (const FaceRequest& request : kRequests) {
             FontFace& slot = faces_[(int)request.face];
             for (const wchar_t* name : request.candidates) {
-                if (!name) { break; }
+                if (!name) {
+                    break;
+                }
                 slot.font = CreateFontW(
                     -kGlyphPixelHeight, 0, 0, 0, request.weight, request.italic, FALSE, FALSE,
                     DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
                     ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, name);
-                if (slot.font) { break; }
+                if (slot.font) {
+                    break;
+                }
             }
-            if (!slot.font) { continue; }
+            if (!slot.font) {
+                continue;
+            }
             HGDIOBJ previous = SelectObject(hdc_, slot.font);
-            if (!previousFont_) { previousFont_ = previous; } // 最初に押しのけたものだけ覚えておく
+            // 最初に押しのけたものだけ覚えておく
+            if (!previousFont_) {
+                previousFont_ = previous;
+            }
             TEXTMETRICW metrics{};
             GetTextMetricsW(hdc_, &metrics);
             slot.ascent = metrics.tmAscent;
@@ -297,10 +336,14 @@ private:
     // 何も確かめずに切り出すと、数字の書体で日本語を書いた瞬間に四角が並ぶ。
     // 持っていない字はBodyへ回すことで、混ざっても読めなくなることはない
     bool FaceHasGlyph(const FontFace& faceSlot, wchar_t ch) const {
-        if (!faceSlot.font || !hdc_) { return false; }
+        if (!faceSlot.font || !hdc_) {
+            return false;
+        }
         SelectObject(hdc_, faceSlot.font);
         WORD index = 0;
-        if (GetGlyphIndicesW(hdc_, &ch, 1, &index, GGI_MARK_NONEXISTING_GLYPHS) == GDI_ERROR) { return false; }
+        if (GetGlyphIndicesW(hdc_, &ch, 1, &index, GGI_MARK_NONEXISTING_GLYPHS) == GDI_ERROR) {
+            return false;
+        }
         return index != 0xFFFF;
     }
 
@@ -440,7 +483,9 @@ private:
     }
 
     void TransitionAtlas(ID3D12GraphicsCommandList* commandList, D3D12_RESOURCE_STATES next) {
-        if (atlasState_ == next) { return; }
+        if (atlasState_ == next) {
+            return;
+        }
         D3D12_RESOURCE_BARRIER barrier{};
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Transition.pResource = atlasResource_.Get();
@@ -467,11 +512,15 @@ private:
     const GlyphInfo& GetOrCreateGlyph(ID3D12GraphicsCommandList* commandList, wchar_t ch, TextFace face) {
         // その書体に字が無ければ本文の書体で出す。豆腐が並ぶよりは書体が変わる方がまし
         int index = (int)face;
-        if (!faces_[index].font || !FaceHasGlyph(faces_[index], ch)) { index = (int)TextFace::Body; }
+        if (!faces_[index].font || !FaceHasGlyph(faces_[index], ch)) {
+            index = (int)TextFace::Body;
+        }
 
         auto& glyphs = faces_[index].glyphs;
         auto it = glyphs.find((uint32_t)ch);
-        if (it != glyphs.end()) { return it->second; }
+        if (it != glyphs.end()) {
+            return it->second;
+        }
 
         GlyphInfo glyph = RasterizeGlyph(commandList, ch, index);
         return glyphs.emplace((uint32_t)ch, glyph).first->second;
@@ -481,7 +530,9 @@ private:
     GlyphInfo RasterizeGlyph(ID3D12GraphicsCommandList* commandList, wchar_t ch, int faceIndex) {
         GlyphInfo glyph{};
         const FontFace& faceSlot = faces_[faceIndex];
-        if (!hdc_ || !faceSlot.font) { return glyph; }
+        if (!hdc_ || !faceSlot.font) {
+            return glyph;
+        }
         // 切り出す前に、必ずその書体をDCへ入れておくこと。
         // 入れ忘れると、直前に使った書体の形が別の書体の名前で貼られる
         SelectObject(hdc_, faceSlot.font);
@@ -495,7 +546,9 @@ private:
         static const MAT2 kIdentity = { {0, 1}, {0, 0}, {0, 0}, {0, 1} };
         GLYPHMETRICS metrics{};
         DWORD size = GetGlyphOutlineW(hdc_, ch, GGO_GRAY8_BITMAP, &metrics, 0, nullptr, &kIdentity);
-        if (size == GDI_ERROR) { return glyph; }
+        if (size == GDI_ERROR) {
+            return glyph;
+        }
 
         // 字送りの量と、基準点から見た図形の位置。空白のように図形を持たない文字でもこれは意味がある
         glyph.advance = (float)metrics.gmCellIncX;
@@ -513,7 +566,10 @@ private:
             return glyph;
         }
 
-        if (atlasFull_) { return glyph; } // 場所が無いので図形は貼らない（字送りだけ効く）
+        // 場所が無いので図形は貼らない（字送りだけ効く）
+        if (atlasFull_) {
+            return glyph;
+        }
 
         int glyphWidth = (int)metrics.gmBlackBoxX;
         int glyphHeight = (int)metrics.gmBlackBoxY;
@@ -538,7 +594,9 @@ private:
 
     // アトラス上の空き場所を棚方式で確保する
     bool AllocateAtlasSpace(int width, int height, int& outX, int& outY) {
-        if (width > kAtlasSize || height > kAtlasSize) { return false; }
+        if (width > kAtlasSize || height > kAtlasSize) {
+            return false;
+        }
 
         if (shelfX_ + width + kGlyphPadding > kAtlasSize) {
             // 今の棚の右端まで来た。1段下がって新しい棚を始める
@@ -546,7 +604,10 @@ private:
             shelfX_ = 0;
             shelfHeight_ = 0;
         }
-        if (shelfY_ + height + kGlyphPadding > kAtlasSize) { return false; } // 下まで使い切った
+        // 下まで使い切った
+        if (shelfY_ + height + kGlyphPadding > kAtlasSize) {
+            return false;
+        }
 
         outX = shelfX_;
         outY = shelfY_;
@@ -596,6 +657,8 @@ private:
 
         // GPUがコピーを終えるまでこのバッファは生かしておかなければならない。
         // 呼び出し側がフレーム終わり（GPU待機のあと）にまとめて解放してくれる
-        if (pendingUploads_) { pendingUploads_->push_back(upload); }
+        if (pendingUploads_) {
+            pendingUploads_->push_back(upload);
+        }
     }
 };

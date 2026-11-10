@@ -203,7 +203,10 @@ inline ComPtr<IDxcBlob> CompileShader(const std::wstring& filePath, const wchar_
     dxcCompiler->Compile(&shaderSourceBuffer, arguments, _countof(arguments), includeHandler, IID_PPV_ARGS(&shaderResult));
     ComPtr<IDxcBlobUtf8> shaderError;
     shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
-    if (shaderError && shaderError->GetStringLength() != 0) { Log(shaderError->GetStringPointer()); assert(false); }
+    if (shaderError && shaderError->GetStringLength() != 0) {
+        Log(shaderError->GetStringPointer());
+        assert(false);
+    }
     ComPtr<IDxcBlob> shaderBlob;
     shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
     return shaderBlob;
@@ -391,7 +394,10 @@ inline Vector3 ComputeTriangleNormal(const Vector4& a, const Vector4& b, const V
         ab.x * ac.y - ab.y * ac.x,
     };
     float length = sqrtf(n.x * n.x + n.y * n.y + n.z * n.z);
-    if (length < 1e-8f) { return { 0.0f, 1.0f, 0.0f }; } // 潰れた三角形。とりあえず上向きにしておく
+    // 潰れた三角形。とりあえず上向きにしておく
+    if (length < 1e-8f) {
+        return { 0.0f, 1.0f, 0.0f };
+    }
     return { n.x / length, n.y / length, n.z / length };
 }
 
@@ -407,8 +413,13 @@ inline Vector3 ComputeTriangleNormal(const Vector4& a, const Vector4& b, const V
 inline void TriangulatePolygon(const std::vector<VertexData>& polygon, std::vector<uint32_t>& outIndices) {
     outIndices.clear();
     const size_t count = polygon.size();
-    if (count < 3) { return; }
-    if (count == 3) { outIndices = { 0, 1, 2 }; return; }
+    if (count < 3) {
+        return;
+    }
+    if (count == 3) {
+        outIndices = { 0, 1, 2 };
+        return;
+    }
 
     // 扇状に切る（凸多角形なら正しい）。耳が見つからなくなったときの逃げ道としても使う
     auto AppendFan = [&outIndices](const std::vector<uint32_t>& ring) {
@@ -431,8 +442,14 @@ inline void TriangulatePolygon(const std::vector<VertexData>& polygon, std::vect
     }
     float normalLength = sqrtf(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
     std::vector<uint32_t> ring(count);
-    for (uint32_t i = 0; i < (uint32_t)count; ++i) { ring[i] = i; }
-    if (normalLength < 1e-12f) { AppendFan(ring); return; } // 頂点が一直線上：面積が無いので分けようがない
+    for (uint32_t i = 0; i < (uint32_t)count; ++i) {
+        ring[i] = i;
+    }
+    // 頂点が一直線上：面積が無いので分けようがない
+    if (normalLength < 1e-12f) {
+        AppendFan(ring);
+        return;
+    }
     normal = { normal.x / normalLength, normal.y / normalLength, normal.z / normalLength };
 
     // ----- 面の上の2軸を作り、2次元へ落とす -----
@@ -445,7 +462,10 @@ inline void TriangulatePolygon(const std::vector<VertexData>& polygon, std::vect
         helper.x * normal.y - helper.y * normal.x,
     };
     float uLength = sqrtf(u.x * u.x + u.y * u.y + u.z * u.z);
-    if (uLength < 1e-12f) { AppendFan(ring); return; }
+    if (uLength < 1e-12f) {
+        AppendFan(ring);
+        return;
+    }
     u = { u.x / uLength, u.y / uLength, u.z / uLength };
     Vector3 v{
         normal.y * u.z - normal.z * u.y,
@@ -470,7 +490,10 @@ inline void TriangulatePolygon(const std::vector<VertexData>& polygon, std::vect
     while (ring.size() > 3) {
         // 一周まわっても切れる耳が見つからないなら、これ以上は分けられない（自分自身と交差している等）。
         // 残りは扇状に切って、頂点を落とさずに済ませる
-        if (attemptsSinceLastClip > ring.size()) { AppendFan(ring); return; }
+        if (attemptsSinceLastClip > ring.size()) {
+            AppendFan(ring);
+            return;
+        }
 
         size_t prev = (at + ring.size() - 1) % ring.size();
         size_t next = (at + 1) % ring.size();
@@ -488,10 +511,14 @@ inline void TriangulatePolygon(const std::vector<VertexData>& polygon, std::vect
         // 三角形abcの中に、他の頂点が入っていないこと。入っていたら切ると相手を分断してしまう
         bool containsOther = false;
         for (size_t i = 0; i < ring.size() && !containsOther; ++i) {
-            if (i == prev || i == at || i == next) { continue; }
+            if (i == prev || i == at || i == next) {
+                continue;
+            }
             const Vector2& p = flat[ring[i]];
             bool inside = Cross2D(a, b, p) >= 0.0f && Cross2D(b, c, p) >= 0.0f && Cross2D(c, a, p) >= 0.0f;
-            if (inside) { containsOther = true; }
+            if (inside) {
+                containsOther = true;
+            }
         }
         if (containsOther) {
             at = next;
@@ -503,7 +530,9 @@ inline void TriangulatePolygon(const std::vector<VertexData>& polygon, std::vect
         outIndices.push_back(ring[at]);
         outIndices.push_back(ring[next]);
         ring.erase(ring.begin() + at);
-        if (at >= ring.size()) { at = 0; }
+        if (at >= ring.size()) {
+            at = 0;
+        }
         attemptsSinceLastClip = 0;
     }
     AppendFan(ring); // 残った3頂点
@@ -545,20 +574,17 @@ inline ModelData LoadObjFile(const std::string& directoryPath, const std::string
             position.x *= -1.0f; // 右手系->左手系変換のためXを反転する
             position.w = 1.0f;
             positions.push_back(position);
-        }
-        else if (identifier == "vt") {
+        } else if (identifier == "vt") {
             Vector2 texcoord;
             s >> texcoord.x >> texcoord.y;
             texcoord.y = 1.0f - texcoord.y; // 左下原点->左上原点のTexture座標系に変換する
             texcoords.push_back(texcoord);
-        }
-        else if (identifier == "vn") {
+        } else if (identifier == "vn") {
             Vector3 normal;
             s >> normal.x >> normal.y >> normal.z;
             normal.x *= -1.0f; // 右手系->左手系変換のためXを反転する
             normals.push_back(normal);
-        }
-        else if (identifier == "f") {
+        } else if (identifier == "f") {
             // 面は三角形・四角形（およびそれ以上のn角形）に対応する。ファン分割で三角形に変換する
             // （Blender側で"Triangulate Faces"を有効にして出力していなくても正しく描画できるようにするため）
             std::vector<VertexData> faceVertices;
@@ -585,15 +611,26 @@ inline ModelData LoadObjFile(const std::string& directoryPath, const std::string
                 int positionIndex = ResolveObjIndex(elementIndices[0], positions.size());
                 int texcoordIndex = ResolveObjIndex(elementIndices[1], texcoords.size());
                 int normalIndex   = ResolveObjIndex(elementIndices[2], normals.size());
-                if (positionIndex < 0) { faceIsBroken = true; break; } // 位置だけは代わりを用意しようがない
+                // 位置だけは代わりを用意しようがない
+                if (positionIndex < 0) {
+                    faceIsBroken = true;
+                    break;
+                }
 
                 Vector4 position = positions[positionIndex];
                 Vector2 texcoord = (texcoordIndex >= 0) ? texcoords[texcoordIndex] : Vector2{ 0.0f, 0.0f };
                 Vector3 normal{ 0.0f, 0.0f, 0.0f };
-                if (normalIndex >= 0) { normal = normals[normalIndex]; } else { faceHasNormals = false; }
+                if (normalIndex >= 0) {
+                    normal = normals[normalIndex];
+                } else {
+                    faceHasNormals = false;
+                }
                 faceVertices.push_back({ position, texcoord, normal });
             }
-            if (faceIsBroken) { brokenFaceCount++; continue; }
+            if (faceIsBroken) {
+                brokenFaceCount++;
+                continue;
+            }
 
             // 三角形へ分割する。凹んだ多角形でも図形の外側にはみ出さないよう耳切り法を使う
             TriangulatePolygon(faceVertices, faceIndices);
@@ -615,8 +652,7 @@ inline ModelData LoadObjFile(const std::string& directoryPath, const std::string
                 modelData.vertices.push_back(triangle[1]);
                 modelData.vertices.push_back(triangle[2]);
             }
-        }
-        else if (identifier == "o" || identifier == "g") {
+        } else if (identifier == "o" || identifier == "g") {
             // ここから別の部品が始まる。名前には空白が入ることがあるので行末まで読む
             std::string partName;
             std::getline(s, partName);
@@ -624,7 +660,11 @@ inline ModelData LoadObjFile(const std::string& directoryPath, const std::string
             size_t nameEnd = partName.find_last_not_of(" \t\r");
             partName = (nameBegin == std::string::npos) ? "" : partName.substr(nameBegin, nameEnd - nameBegin + 1);
             // 部品の名前はキャッシュの見出し（"フォルダ/ファイル#部品名"）に使うので、区切り文字は潰しておく
-            for (char& c : partName) { if (c == '#' || c == '/' || c == '\\') { c = '_'; } }
+            for (char& c : partName) {
+                if (c == '#' || c == '/' || c == '\\') {
+                    c = '_';
+                }
+            }
 
             // 面を1枚も挟まずにo/gが続いた場合は、新しい部品ではなく名前の付け替えとみなす。
             // 書き出しの設定によってはoの直後にgが並ぶことがあり、そのまま数えると空の部品ができてしまう
@@ -633,8 +673,7 @@ inline ModelData LoadObjFile(const std::string& directoryPath, const std::string
             } else {
                 partMarkers.push_back({ partName, modelData.vertices.size() });
             }
-        }
-        else if (identifier == "mtllib") {
+        } else if (identifier == "mtllib") {
             // materialTemplateLibraryファイルの名前を取得する
             std::string materialFilename;
             s >> materialFilename;
@@ -652,18 +691,28 @@ inline ModelData LoadObjFile(const std::string& directoryPath, const std::string
     for (size_t i = 0; i < partMarkers.size(); ++i) {
         size_t first = partMarkers[i].firstVertex;
         size_t last = (i + 1 < partMarkers.size()) ? partMarkers[i + 1].firstVertex : modelData.vertices.size();
-        if (last <= first) { continue; } // 面を1枚も持たない区切りは部品にしない
+        // 面を1枚も持たない区切りは部品にしない
+        if (last <= first) {
+            continue;
+        }
 
         std::string name = partMarkers[i].name;
-        if (name.empty()) { name = "part" + std::to_string(modelData.parts.size() + 1); }
+        if (name.empty()) {
+            name = "part" + std::to_string(modelData.parts.size() + 1);
+        }
         // 同じ名前が複数あるとキャッシュの見出しがぶつかるので、後から来た方に番号を足して分ける
         std::string uniqueName = name;
         for (int suffix = 2; ; ++suffix) {
             bool taken = false;
             for (const ModelPart& existing : modelData.parts) {
-                if (existing.name == uniqueName) { taken = true; break; }
+                if (existing.name == uniqueName) {
+                    taken = true;
+                    break;
+                }
             }
-            if (!taken) { break; }
+            if (!taken) {
+                break;
+            }
             uniqueName = name + "_" + std::to_string(suffix);
         }
         modelData.parts.push_back({ uniqueName, first, last - first });
@@ -785,7 +834,9 @@ inline MeshBuffers CreateMeshBuffers(ID3D12Device* device, const std::vector<Ver
     // ボックスコライダー用に、頂点位置だけを抜き出してローカル空間のAABBを求めておく
     std::vector<Vector3> positions;
     positions.reserve(vertices.size());
-    for (const auto& v : vertices) { positions.push_back({ v.position.x, v.position.y, v.position.z }); }
+    for (const auto& v : vertices) {
+        positions.push_back({ v.position.x, v.position.y, v.position.z });
+    }
     mesh.localAABB = ComputeLocalAABB(positions);
     // メッシュコライダー（球vs静止メッシュ）用にCPU側にも保持しておく
     mesh.localPositions = positions;
@@ -812,7 +863,9 @@ inline MeshBuffers CreateMeshBuffers(ID3D12Device* device, const std::vector<Ver
 // LoadObjFileは頂点を共有せずポリゴンごとに並べているだけなので、Indexは単純に0,1,2...と振ればよい
 inline MeshBuffers CreateMeshBuffersFromModelData(ID3D12Device* device, const ModelData& modelData) {
     std::vector<uint32_t> indices(modelData.vertices.size());
-    for (uint32_t i = 0; i < indices.size(); ++i) { indices[i] = i; }
+    for (uint32_t i = 0; i < indices.size(); ++i) {
+        indices[i] = i;
+    }
     return CreateMeshBuffers(device, modelData.vertices, indices);
 }
 
@@ -823,7 +876,9 @@ inline MeshBuffers CreateMeshBuffersFromModelPart(ID3D12Device* device, const Mo
     size_t last = (std::min)(first + part.vertexCount, modelData.vertices.size());
     std::vector<VertexData> vertices(modelData.vertices.begin() + first, modelData.vertices.begin() + last);
     std::vector<uint32_t> indices(vertices.size());
-    for (uint32_t i = 0; i < indices.size(); ++i) { indices[i] = i; }
+    for (uint32_t i = 0; i < indices.size(); ++i) {
+        indices[i] = i;
+    }
     return CreateMeshBuffers(device, vertices, indices);
 }
 
@@ -947,7 +1002,10 @@ struct MeshLineData {
 // （重複した辺は同じ色で重ねて描かれるだけなので、見た目には影響しない）
 inline MeshLineData CreateMeshWireframeLineData(ID3D12Device* device, const std::vector<Vector3>& localPositions, const std::vector<uint32_t>& triangleIndices) {
     MeshLineData data;
-    if (localPositions.empty() || triangleIndices.size() < 3) { return data; } // メッシュ情報が無ければ何もしない
+    // メッシュ情報が無ければ何もしない
+    if (localPositions.empty() || triangleIndices.size() < 3) {
+        return data;
+    }
 
     std::vector<uint32_t> edgeIndices;
     edgeIndices.reserve(triangleIndices.size() * 2);

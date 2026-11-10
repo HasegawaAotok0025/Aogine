@@ -80,7 +80,9 @@ void GamePlayScene::Initialize(Engine& engine) {
     // --- モデルの差し替えの見本：Mキーで、スザンヌとUVチェッカーの形を切り替える ---
     // 参照ではなくidで控える（物が増えると参照は古い場所を指すため）
     modelId_ = engine.AddModel("resources/SuzannuObj", "suzannu.obj").id;
-    if (Object3D* model = engine.FindById(modelId_)) { model->transform.translate = { -3.0f, 1.0f, 0.0f }; }
+    if (Object3D* model = engine.FindById(modelId_)) {
+        model->transform.translate = { -3.0f, 1.0f, 0.0f };
+    }
 }
 
 void GamePlayScene::Update(float deltaTime) {
@@ -89,8 +91,11 @@ void GamePlayScene::Update(float deltaTime) {
 
     if (engine.Input().IsKeyTriggered(DIK_M)) {
         showingSuzanne_ = !showingSuzanne_;
-        if (showingSuzanne_) { engine.SetModel(modelId_, "resources/SuzannuObj", "suzannu.obj"); }
-        else { engine.SetModel(modelId_, "resources/UVCheckObj", "UVChecker.obj"); }
+        if (showingSuzanne_) {
+            engine.SetModel(modelId_, "resources/SuzannuObj", "suzannu.obj");
+        } else {
+            engine.SetModel(modelId_, "resources/UVCheckObj", "UVChecker.obj");
+        }
     }
 
     // --- 絵の切り取りの見本：512x512の絵の左上4分の1（256x256）だけを、右上に小さく出す ---

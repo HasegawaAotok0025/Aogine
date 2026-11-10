@@ -20,15 +20,25 @@ void Player::Initialize(Engine& engine, const Vector3& position) {
 
 void Player::Update(float deltaTime) {
     Object3D* box = engine_ ? engine_->FindById(id_) : nullptr;
-    if (!box) { return; }
+    if (!box) {
+        return;
+    }
 
     // 横の速さはキーでそのまま決める（押していなければ止まる）
     InputEngine& input = engine_->Input();
     float moveX = 0.0f, moveZ = 0.0f;
-    if (input.IsKeyDown(DIK_D)) { moveX += 1.0f; }
-    if (input.IsKeyDown(DIK_A)) { moveX -= 1.0f; }
-    if (input.IsKeyDown(DIK_W)) { moveZ += 1.0f; }
-    if (input.IsKeyDown(DIK_S)) { moveZ -= 1.0f; }
+    if (input.IsKeyDown(DIK_D)) {
+        moveX += 1.0f;
+    }
+    if (input.IsKeyDown(DIK_A)) {
+        moveX -= 1.0f;
+    }
+    if (input.IsKeyDown(DIK_W)) {
+        moveZ += 1.0f;
+    }
+    if (input.IsKeyDown(DIK_S)) {
+        moveZ -= 1.0f;
+    }
     box->velocity.x = moveX * kMoveSpeed;
     box->velocity.z = moveZ * kMoveSpeed;
 
